@@ -1,0 +1,11 @@
+[package]
+name = "winmux-shared"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Shared types between WinMux controller and agent"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "WinMux",
+  "version": "0.1.0",
+  "identifier": "app.winmux.desktop",
+  "build": {
+    "beforeDevCommand": "cd ../ui && npm run dev",
+    "beforeBuildCommand": "cd ../ui && npm run build",
+    "frontendDist": "../ui/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "WinMux",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true,
+        "center": true,
+        "backgroundColor": "#0a0e27"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "publisher": "Denis Romanyuk",
+    "shortDescription": "WinMux — Linux-середовище для Windows без WSL",
+    "longDescription": "Портативне Linux-середовище для Windows у стилі Termux. Без WSL, Hyper-V, прав адміністратора. Для AI-агентів (claude_code) на десктопах і Windows Server через RDP."
+  }
+}

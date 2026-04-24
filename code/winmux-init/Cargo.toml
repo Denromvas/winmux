@@ -1,0 +1,15 @@
+[package]
+name = "winmux-init"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Minimal PID 1 init for WinMux guest"
+
+[dependencies]
+nix = { version = "0.29", features = ["mount", "process", "fs", "user", "signal"] }
+winmux-shared = { path = "../winmux-shared" }
+
+[[bin]]
+name = "winmux-init"
+path = "src/main.rs"

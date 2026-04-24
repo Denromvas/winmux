@@ -1,0 +1,40 @@
+#cloud-config
+ssh_pwauth: true
+disable_root: false
+chpasswd:
+  expire: false
+  list: |
+    root:winmux
+    winmux:winmux
+
+users:
+  - name: winmux
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: winmux
+
+package_update: false
+package_upgrade: false
+
+runcmd:
+  - systemctl disable --now snapd.service snapd.socket snapd.seeded.service 2>/dev/null || true
+  - systemctl mask snapd.service snapd.socket 2>/dev/null || true
+  - apt-get remove -y snapd 2>/dev/null || true
+
+write_files:
+  - path: /etc/motd
+    content: |
+      ===========================================
+      WinMux PoC Guest - Ubuntu 24.04 Minimal
+      Login: winmux / winmux  (sudo NOPASSWD)
+      ===========================================
+
+  - path: /etc/profile.d/winmux.sh
+    content: |
+      export PS1='\[\033[0;32m\]winmux@guest\[\033[0m\]:\[\033[0;34m\]\w\[\033[0m\]$ '
+      export EDITOR=nano
+
+bootcmd:
+  - echo "WinMux PoC starting..." > /dev/kmsg

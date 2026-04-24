@@ -1,0 +1,9 @@
+[book]
+title = "WinMux Documentation"
+authors = ["Denis Romanyuk"]
+language = "uk"
+src = "src"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"

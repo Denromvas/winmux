@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "winmux-init",
+    "winmux-shared",
+    "winmux-controller",
+    "winmux-agent",
+    "winmux-desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Denis Romanyuk <claudetaistra@gmail.com>"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

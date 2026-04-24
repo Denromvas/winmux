@@ -1,0 +1,35 @@
+# Build outputs
+build/
+dist/
+target/
+node_modules/
+
+# Tauri / Vite outputs
+**/dist/
+**/.vite/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Big artifacts (downloaded separately, not committed)
+research/downloads/qemu/
+research/downloads/qemu-w64-setup.exe
+research/downloads/ubuntu-24.04.img
+research/downloads/*.qcow2
+research/downloads/winmux-poc.tar.gz
+research/downloads/laptop-bundle.tar.gz
+research/downloads/poc-bundle.tar.gz
+research/downloads/seed.iso
+research/downloads/webview2/*.dll
+
+# Logs / temp
+*.log
+**/logs/
+*.pid
+
+# OS
+Thumbs.db
+desktop.ini
