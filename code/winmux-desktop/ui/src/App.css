@@ -369,3 +369,54 @@
   color: #00ff88;
   margin: 0 0 8px 0;
 }
+
+.tab-content {
+  position: absolute;
+  inset: 8px;
+}
+
+.pane {
+  position: relative;
+  border: 1px solid #1a1f3a;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0a0e27;
+  transition: border-color 0.15s;
+}
+.pane.focused {
+  border-color: #00ff8855;
+}
+.pane.focused::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #00ff88;
+  z-index: 5;
+}
+
+.pane-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 107, 107, 0.6);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.pane-close:hover {
+  opacity: 1;
+  background: #ff6b6b;
+}

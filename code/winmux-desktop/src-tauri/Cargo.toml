@@ -24,7 +24,7 @@ serde_json.workspace = true
 anyhow.workspace = true
 open = "5"
 portable-pty = "0.8"
-ureq = { version = "2", features = ["tls"], default-features = false }
+ureq = { version = "2", features = ["tls", "json"], default-features = false }
 uuid = { version = "1", features = ["v4"] }
 
 [features]

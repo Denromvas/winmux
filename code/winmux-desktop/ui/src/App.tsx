@@ -5,6 +5,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import "./App.css";
 import Settings from "./Settings";
 import Terminal from "./Terminal";
+import CommandPalette, { Cmd } from "./CommandPalette";
 
 interface VmStatus {
   state: "stopped" | "starting" | "running" | "error";
@@ -15,8 +16,11 @@ interface VmStatus {
 }
 
 interface Tab {
-  id: number;
+  id: number;          // tab logical id (== first pane's id)
   title: string;
+  panes: number[];     // pane ids (each one is a backend tab/PTY)
+  layout: "single" | "h-split" | "v-split";
+  focusedPane: number;
 }
 
 const themes: Record<string, any> = {
@@ -36,7 +40,31 @@ export default function App() {
   const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem("winmux.fontSize") || "14", 10));
   const [themeName, setThemeName] = useState<string>(() => localStorage.getItem("winmux.theme") || "winmux-dark");
   const [showSettings, setShowSettings] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
   const [telemetryAsk, setTelemetryAsk] = useState(false);
+
+  // Ctrl+Shift+P → command palette
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "P" || e.key === "p")) {
+        e.preventDefault(); setShowPalette(true);
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "T" || e.key === "t")) {
+        e.preventDefault();
+        if (status.state === "running") invoke("open_tab").catch(console.error);
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "D" || e.key === "d")) {
+        e.preventDefault();
+        if (status.state === "running") splitPane("v-split");
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
+        e.preventDefault();
+        if (status.state === "running") splitPane("h-split");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [status.state]);
 
   useEffect(() => { localStorage.setItem("winmux.fontSize", String(fontSize)); }, [fontSize]);
   useEffect(() => { localStorage.setItem("winmux.theme", themeName); }, [themeName]);
@@ -53,7 +81,10 @@ export default function App() {
     const u2 = listen<string>("controller-log", (e) => setLogs(p => [...p.slice(-200), e.payload]));
     const u3 = listen<number>("tab-opened", (e) => {
       const id = e.payload;
-      setTabs(prev => prev.some(t => t.id === id) ? prev : [...prev, { id, title: `bash ${id}` }]);
+      setTabs(prev => {
+        if (prev.some(t => t.panes.includes(id))) return prev;
+        return [...prev, { id, title: `bash ${id}`, panes: [id], layout: "single", focusedPane: id }];
+      });
       setActiveTab(id);
     });
     return () => { u1.then(f=>f()); u2.then(f=>f()); u3.then(f=>f()); };
@@ -66,12 +97,44 @@ export default function App() {
     try { await invoke("open_tab"); } catch (e) { console.error(e); }
   };
   const closeTab = async (id: number) => {
-    try { await invoke("close_tab", { tabId: id }); } catch {}
+    // Закриваємо всі pane-и tabа
+    const t = tabs.find(t => t.id === id);
+    if (t) {
+      for (const p of t.panes) {
+        try { await invoke("close_tab", { tabId: p }); } catch {}
+      }
+    }
     setTabs(prev => {
       const next = prev.filter(t => t.id !== id);
       if (activeTab === id) setActiveTab(next.length ? next[next.length - 1].id : null);
       return next;
     });
+  };
+
+  const splitPane = async (orientation: "h-split" | "v-split") => {
+    if (activeTab === null) return;
+    const tab = tabs.find(t => t.id === activeTab);
+    if (!tab) return;
+    if (tab.panes.length >= 2) return;  // MVP: max 2 panes per tab
+    try {
+      const newPaneId = await invoke<number>("open_tab");
+      setTabs(prev => prev.map(t =>
+        t.id === activeTab
+          ? { ...t, panes: [...t.panes, newPaneId], layout: orientation, focusedPane: newPaneId }
+          : t
+      ));
+    } catch (e) { console.error(e); }
+  };
+
+  const closePane = async (tabId: number, paneId: number) => {
+    try { await invoke("close_tab", { tabId: paneId }); } catch {}
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t;
+      const panes = t.panes.filter(p => p !== paneId);
+      if (panes.length === 0) return null as any;
+      return { ...t, panes, layout: "single" as const,
+        focusedPane: panes.includes(t.focusedPane) ? t.focusedPane : panes[0] };
+    }).filter(Boolean));
   };
 
   const forceKill = async () => {
@@ -254,19 +317,97 @@ export default function App() {
               </div>
             )}
             {tabs.map(tab => (
-              <Terminal
+              <div
                 key={tab.id}
-                tabId={tab.id}
-                active={activeTab === tab.id}
-                fontSize={fontSize}
-                theme={themes[themeName] || themes["winmux-dark"]}
-              />
+                className="tab-content"
+                style={{
+                  display: activeTab === tab.id ? "grid" : "none",
+                  gridTemplateColumns: tab.layout === "v-split" ? "1fr 1fr" : "1fr",
+                  gridTemplateRows: tab.layout === "h-split" ? "1fr 1fr" : "1fr",
+                  gap: tab.layout === "single" ? 0 : 4,
+                  height: "100%",
+                  width: "100%",
+                }}
+              >
+                {tab.panes.map(paneId => (
+                  <div
+                    key={paneId}
+                    className={`pane ${tab.focusedPane === paneId ? "focused" : ""}`}
+                    onClick={() => setTabs(p => p.map(t => t.id === tab.id ? { ...t, focusedPane: paneId } : t))}
+                  >
+                    {tab.panes.length > 1 && (
+                      <button
+                        className="pane-close"
+                        onClick={(e) => { e.stopPropagation(); closePane(tab.id, paneId); }}
+                        title="Close pane"
+                      >×</button>
+                    )}
+                    <Terminal
+                      tabId={paneId}
+                      active={activeTab === tab.id && tab.focusedPane === paneId}
+                      fontSize={fontSize}
+                      theme={themes[themeName] || themes["winmux-dark"]}
+                    />
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
         </main>
       </div>
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+
+      {showPalette && (() => {
+        const cmds: Cmd[] = [
+          { id: "tab.new", title: "New terminal tab", shortcut: "Ctrl+Shift+T", run: () => invoke("open_tab"),
+            hint: "Open another bash session in a new tab" },
+          ...(activeTab !== null ? [
+            { id: "tab.close", title: "Close current tab", shortcut: "Ctrl+W",
+              run: () => closeTab(activeTab) } as Cmd,
+            { id: "pane.split.v", title: "Split pane vertically (right)",
+              shortcut: "Ctrl+Shift+D", run: () => splitPane("v-split"),
+              hint: "Add a second terminal side-by-side" } as Cmd,
+            { id: "pane.split.h", title: "Split pane horizontally (down)",
+              shortcut: "Ctrl+Shift+S", run: () => splitPane("h-split"),
+              hint: "Add a second terminal stacked below" } as Cmd,
+          ] : []),
+          ...(status.state === "running"
+            ? [
+                { id: "vm.stop", title: "Stop VM", run: stopVm } as Cmd,
+                { id: "vm.ssh", title: "Open SSH in PowerShell", run: openSsh } as Cmd,
+              ]
+            : [{ id: "vm.start", title: "Start VM", run: startVm } as Cmd]),
+          { id: "vm.kill", title: "Force kill all WinMux/QEMU", run: forceKill, hint: "When buttons don't respond" },
+          { id: "vm.reset", title: "Reset session", run: resetSession, hint: "Wipe overlay disk, fresh boot next time" },
+          { id: "settings.open", title: "Open Settings", run: () => setShowSettings(true) },
+          { id: "view.font.up", title: "Increase font size", shortcut: "Ctrl++", run: () => setFontSize(s => Math.min(32, s + 1)) },
+          { id: "view.font.down", title: "Decrease font size", shortcut: "Ctrl+-", run: () => setFontSize(s => Math.max(8, s - 1)) },
+          { id: "view.font.reset", title: "Reset font size to 14", run: () => setFontSize(14) },
+          ...["winmux-dark","dracula","tokyo-night","solarized-dark","catppuccin-mocha","github-dark"].map(t => ({
+            id: `theme.${t}`, title: `Switch theme: ${t}`, run: () => setThemeName(t)
+          } as Cmd)),
+          { id: "telemetry.toggle", title: "Toggle telemetry", run: async () => {
+            const s = await invoke<{enabled:boolean}>("telemetry_status");
+            await invoke("telemetry_set", { enabled: !s.enabled });
+          } },
+          { id: "update.check", title: "Check for updates",
+            run: async () => {
+              const r = await invoke<any>("check_update");
+              if (r.available) {
+                if (confirm(`New version ${r.available} available!\n\n${r.notes || ""}\n\nDownload and install now?`)) {
+                  invoke("download_and_install_update", { url: r.download_url });
+                }
+              } else {
+                alert(`You're on the latest version: ${r.current}`);
+              }
+            }
+          },
+          { id: "url.docs", title: "Open documentation", run: () => invoke("open_url", { url: "https://denromvas.website/winmux/docs/" }) },
+          { id: "url.github", title: "Open GitHub repo", run: () => invoke("open_url", { url: "https://github.com/Denromvas/winmux" }) },
+        ];
+        return <CommandPalette commands={cmds} onClose={() => setShowPalette(false)} />;
+      })()}
 
       {telemetryAsk && (
         <div className="settings-overlay">

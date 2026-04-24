@@ -1,0 +1,100 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: code
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build UI
+        working-directory: code/winmux-desktop/ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build winmux-controller
+        working-directory: code
+        run: cargo build --release --target x86_64-pc-windows-msvc -p winmux-controller
+
+      - name: Build winmux-desktop (with auto-update plugin)
+        working-directory: code
+        run: cargo build --release --target x86_64-pc-windows-msvc -p winmux-desktop
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: winmux-windows-${{ github.sha }}
+          path: |
+            code/target/x86_64-pc-windows-msvc/release/winmux-controller.exe
+            code/target/x86_64-pc-windows-msvc/release/winmux-desktop.exe
+
+  build-guest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install musl + Rust
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: code
+
+      - name: Build winmux-init + winmux-agent
+        working-directory: code
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl -p winmux-init
+          cargo build --release --target x86_64-unknown-linux-musl -p winmux-agent
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: winmux-guest-${{ github.sha }}
+          path: |
+            code/target/x86_64-unknown-linux-musl/release/winmux-init
+            code/target/x86_64-unknown-linux-musl/release/winmux-agent
+
+  release:
+    needs: [build-windows, build-guest]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') }}
+          files: |
+            winmux-windows-*/winmux-*.exe
+            winmux-guest-*/winmux-*
