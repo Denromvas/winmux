@@ -147,17 +147,56 @@ fn auto_mount_workspace() {
         _ => { log("auto-mount: no opt/winmux/keyfile — skipping"); return; }
     };
 
-    // Запишемо ключ у /home/winmux/.ssh/winmux_auto
     let ssh_dir = "/home/winmux/.ssh";
     let _ = fs::create_dir_all(ssh_dir);
+
+    // Private key для sshfs до Windows-host
     let key_path = format!("{ssh_dir}/winmux_auto");
     if fs::write(&key_path, &key_data).is_err() {
         log("auto-mount: failed to write key");
         return;
     }
-    // Set perms: 0600 + chown to winmux
     let _ = Command::new("/bin/chmod").args(["600", &key_path]).status();
+
+    // Public key → /home/winmux/.ssh/authorized_keys для passwordless SSH від хоста до guest.
+    // Це дає Tauri-терміналу заходити без пароля.
+    if let Some(pub_data) = fw_cfg_read_bytes("opt/winmux/pubkey") {
+        if !pub_data.is_empty() {
+            let auth_path = format!("{ssh_dir}/authorized_keys");
+            let mut existing = fs::read_to_string(&auth_path).unwrap_or_default();
+            let pub_str = String::from_utf8_lossy(&pub_data);
+            if !existing.contains(pub_str.trim()) {
+                if !existing.is_empty() && !existing.ends_with('\n') { existing.push('\n'); }
+                existing.push_str(pub_str.trim());
+                existing.push('\n');
+                let _ = fs::write(&auth_path, existing);
+                let _ = Command::new("/bin/chmod").args(["600", &auth_path]).status();
+                log("auto-mount: passwordless SSH enabled (host → guest)");
+            }
+        }
+    }
+
+    let _ = Command::new("/bin/chmod").args(["700", ssh_dir]).status();
     let _ = Command::new("/bin/chown").args(["-R", "winmux:winmux", ssh_dir]).status();
+
+    // Update /etc/motd from guest agent — щоб видно було що workspace готовий
+    let _ = std::fs::write("/etc/update-motd.d/99-winmux", r#"#!/bin/sh
+cat <<'BANNER'
+
+╔══════════════════════════════════════════════════════════════════════╗
+║   WinMux Linux                                                        ║
+║                                                                        ║
+║   📁 ~/win → ваш Windows USERPROFILE (auto-mount via SSH key)         ║
+║   🤖 claude          — AI agent (need ANTHROPIC_API_KEY)              ║
+║   ⚡ claude --dangerously-skip-permissions   — auto-mode              ║
+║   📦 npm install -g <pkg>   — будь-що з npm                           ║
+║                                                                        ║
+║   Ports: будь-який LISTEN автоматично доступний на Windows localhost  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+BANNER
+"#);
+    let _ = Command::new("/bin/chmod").args(["+x", "/etc/update-motd.d/99-winmux"]).status();
 
     // Mount: target=/workspace, source=user@10.0.2.2:profile_path
     let _ = fs::create_dir_all("/workspace");

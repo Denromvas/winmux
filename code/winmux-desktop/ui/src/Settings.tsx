@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getLang, setLang } from "./i18n";
 
 interface Cfg {
   ram: string;
@@ -95,6 +96,14 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             value={cfg.agent_port}
             onChange={(e) => setCfg({ ...cfg, agent_port: parseInt(e.target.value) || 4445 })}
           />
+        </div>
+
+        <div className="form-row">
+          <label>UI language / Мова</label>
+          <select value={getLang()} onChange={(e) => setLang(e.target.value as any)}>
+            <option value="uk">Українська</option>
+            <option value="en">English</option>
+          </select>
         </div>
 
         {error && <p style={{ color: "#ff6b6b" }}>{error}</p>}

@@ -6,6 +6,7 @@ import "./App.css";
 import Settings from "./Settings";
 import Terminal from "./Terminal";
 import CommandPalette, { Cmd } from "./CommandPalette";
+import { t } from "./i18n";
 
 interface VmStatus {
   state: "stopped" | "starting" | "running" | "error";
@@ -220,25 +221,19 @@ export default function App() {
 
       <div className="main">
         <aside className="sidebar">
-          <section>
-            <h3>VM</h3>
-            {status.state === "running" ? (
-              <>
-                <button onClick={openSsh} className="btn-start">Open SSH</button>
-                <button onClick={stopVm} className="btn-stop">Stop VM</button>
-              </>
-            ) : (
+          {status.state !== "running" && (
+            <section>
+              <h3>VM</h3>
               <button onClick={startVm} className="btn-start" disabled={status.state === "starting"}>
-                {status.state === "starting" ? "Starting..." : "Start VM"}
+                {status.state === "starting" ? t("vm.starting") : t("vm.start")}
               </button>
-            )}
-            {status.pid && <p className="meta">PID {status.pid}</p>}
-          </section>
+            </section>
+          )}
 
           <section>
-            <h3>Ports forwarded</h3>
+            <h3>{t("ports.title")}</h3>
             {status.ports.length === 0 ? (
-              <p className="empty">none</p>
+              <p className="empty">{t("ports.none")}</p>
             ) : (
               <ul className="ports">
                 {status.ports.map(p => (
@@ -268,18 +263,28 @@ export default function App() {
           </section>
 
           <section>
-            <h3>Configuration</h3>
-            <button onClick={() => setShowSettings(true)} className="btn-warn">⚙ Settings</button>
-          </section>
-
-          <section>
-            <h3>Recovery</h3>
-            <button onClick={forceKill} className="btn-warn">Force kill all</button>
-            <button onClick={resetSession} className="btn-warn">Reset session</button>
+            <h3>{t("actions.title")}</h3>
+            <button onClick={() => setShowPalette(true)} className="btn-warn" title="Ctrl+Shift+P">{t("actions.palette")}</button>
+            <button onClick={() => setShowSettings(true)} className="btn-warn">{t("actions.settings")}</button>
+            {status.state === "running" && (
+              <button onClick={openSsh} className="btn-warn">{t("actions.ssh")}</button>
+            )}
+            <details style={{ marginTop: 8 }}>
+              <summary style={{ cursor: "pointer", color: "#4a5680", fontSize: 11, padding: "4px 0" }}>
+                {t("actions.advanced")}
+              </summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+                {status.state === "running" && (
+                  <button onClick={stopVm} className="btn-warn">{t("vm.stop")}</button>
+                )}
+                <button onClick={forceKill} className="btn-warn">{t("recovery.kill")}</button>
+                <button onClick={resetSession} className="btn-warn">{t("recovery.reset")}</button>
+              </div>
+            </details>
           </section>
 
           <section className="logs-section">
-            <h3>Controller log</h3>
+            <h3>{t("log.title")}</h3>
             <pre className="logs">{logs.slice(-30).join("\n")}</pre>
           </section>
         </aside>
@@ -405,6 +410,40 @@ export default function App() {
           },
           { id: "url.docs", title: "Open documentation", run: () => invoke("open_url", { url: "https://denromvas.website/winmux/docs/" }) },
           { id: "url.github", title: "Open GitHub repo", run: () => invoke("open_url", { url: "https://github.com/Denromvas/winmux" }) },
+          { id: "url.landing", title: "Open winmux website", run: () => invoke("open_url", { url: "https://denromvas.website/winmux/" }) },
+          { id: "claude.auto", title: "Run claude in auto-mode (--dangerously-skip-permissions)",
+            hint: "Opens new tab with auto-mode prompt — Claude executes everything without asking",
+            run: async () => {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => {
+                invoke("send_input", { tabId: id, data: 'claude --dangerously-skip-permissions ' });
+              }, 1500);
+            }
+          },
+          { id: "claude.normal", title: "Run claude (interactive)",
+            run: async () => {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => {
+                invoke("send_input", { tabId: id, data: 'claude\n' });
+              }, 1500);
+            }
+          },
+          { id: "claude.tmux", title: "Run claude in tmux (survives disconnect)",
+            run: async () => {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => {
+                invoke("send_input", { tabId: id, data: 'tmux new -s claude-auto -d "claude --dangerously-skip-permissions" && tmux attach -t claude-auto\n' });
+              }, 1500);
+            }
+          },
+          { id: "guest.mount-help", title: "Show winmux-mount help (manual mount)",
+            run: async () => {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => {
+                invoke("send_input", { tabId: id, data: 'winmux-mount -h\n' });
+              }, 1500);
+            }
+          },
         ];
         return <CommandPalette commands={cmds} onClose={() => setShowPalette(false)} />;
       })()}

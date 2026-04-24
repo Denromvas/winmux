@@ -36,6 +36,20 @@ enum Cmd {
         #[arg(default_value = "winmux.toml")]
         path: PathBuf,
     },
+    /// Відкрити SSH у запущений guest (через PowerShell/cmd)
+    Ssh {
+        /// Команда для виконання у guest (інакше — інтерактивна оболонка)
+        cmd: Vec<String>,
+    },
+    /// Показати tail boot.log
+    Logs {
+        #[arg(short = 'n', long, default_value = "30")]
+        lines: usize,
+    },
+    /// Перевірити чи VM запущена + порти
+    Status,
+    /// Зупинити QEMU процеси (force kill)
+    Stop,
     /// Версія
     Version,
 }
@@ -54,6 +68,118 @@ fn main() -> Result<()> {
         Cmd::Start { config } => {
             run(&config)?;
         }
+        Cmd::Ssh { cmd } => {
+            cmd_ssh(&cmd)?;
+        }
+        Cmd::Logs { lines } => {
+            cmd_logs(lines)?;
+        }
+        Cmd::Status => {
+            cmd_status()?;
+        }
+        Cmd::Stop => {
+            cmd_stop()?;
+        }
+    }
+    Ok(())
+}
+
+fn read_ssh_port() -> u16 {
+    std::env::current_exe().ok()
+        .and_then(|exe| exe.parent().map(|p| p.join("winmux.toml")))
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| s.lines()
+            .find_map(|l| l.trim().strip_prefix("ssh_port = ")
+                .and_then(|v| v.trim().parse().ok())))
+        .unwrap_or(2223)
+}
+
+fn cmd_ssh(args: &[String]) -> Result<()> {
+    let port = read_ssh_port();
+    let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
+    let key = exe_dir.join("ssh").join("id_winmux_ed25519");
+
+    let mut cmd = std::process::Command::new("ssh.exe");
+    cmd.arg("-p").arg(port.to_string())
+       .arg("-o").arg("StrictHostKeyChecking=no")
+       .arg("-o").arg("UserKnownHostsFile=NUL");
+    if key.exists() {
+        cmd.arg("-i").arg(&key)
+           .arg("-o").arg("IdentitiesOnly=yes");
+    }
+    cmd.arg("winmux@127.0.0.1");
+    if !args.is_empty() {
+        cmd.args(args);
+    }
+    let status = cmd.status().context("spawn ssh.exe")?;
+    std::process::exit(status.code().unwrap_or(1));
+}
+
+fn cmd_logs(lines: usize) -> Result<()> {
+    let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
+    let log = exe_dir.join("logs").join("boot.log");
+    if !log.exists() {
+        anyhow::bail!("no log at {}", log.display());
+    }
+    let content = std::fs::read_to_string(&log)?;
+    let total: Vec<&str> = content.lines().collect();
+    let from = total.len().saturating_sub(lines);
+    for line in &total[from..] {
+        println!("{line}");
+    }
+    Ok(())
+}
+
+fn cmd_status() -> Result<()> {
+    use std::net::TcpStream;
+    use std::time::Duration;
+
+    let port = read_ssh_port();
+    let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
+
+    println!("WinMux v{}", env!("CARGO_PKG_VERSION"));
+    println!("Install:  {}", exe_dir.display());
+
+    // QEMU pid?
+    #[cfg(windows)]
+    {
+        let out = std::process::Command::new("tasklist.exe")
+            .args(["/FI", "IMAGENAME eq qemu-system-x86_64.exe", "/FO", "CSV", "/NH"])
+            .output();
+        if let Ok(o) = out {
+            let s = String::from_utf8_lossy(&o.stdout);
+            if s.contains("qemu-system-x86_64") {
+                let parts: Vec<&str> = s.split(',').collect();
+                let pid = parts.get(1).map(|p| p.trim_matches('"')).unwrap_or("?");
+                println!("QEMU:     running (PID {pid})");
+            } else {
+                println!("QEMU:     not running");
+            }
+        }
+    }
+
+    // SSH port reachable?
+    match TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().unwrap(), Duration::from_secs(2)) {
+        Ok(_) => println!("SSH:     127.0.0.1:{port} ✓"),
+        Err(_) => println!("SSH:     127.0.0.1:{port} ✗ (not reachable)"),
+    }
+    Ok(())
+}
+
+fn cmd_stop() -> Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        for image in ["qemu-system-x86_64.exe", "qemu-system-x86_64w.exe", "winmux.exe"] {
+            let _ = std::process::Command::new("taskkill.exe")
+                .args(["/F", "/T", "/IM", image])
+                .creation_flags(CREATE_NO_WINDOW)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
+        println!("Killed: qemu-system-x86_64, winmux");
     }
     Ok(())
 }

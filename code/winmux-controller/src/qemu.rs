@@ -170,23 +170,27 @@ impl Vm {
                 if let Ok(priv_data) = std::fs::read_to_string(&priv_path) {
                     let userprofile = std::env::var("USERPROFILE").unwrap_or_default()
                         .replace('\\', "/");
-                    // Pass via fw_cfg: opt/winmux/{user,profile,key}
                     cmd.arg("-fw_cfg")
                        .arg(format!("name=opt/winmux/user,string={}", username));
                     cmd.arg("-fw_cfg")
-                       .arg(format!("name=opt/winmux/profile,string=/{}",
-                            // C:\Users\Admin → /C:/Users/Admin (sshfs path style)
-                            userprofile));
-                    // Private key — temp file бо command line обмежений
+                       .arg(format!("name=opt/winmux/profile,string=/{}", userprofile));
+                    // Private key (для sshfs до Windows-host)
                     let key_tmp = cfg.workdir.join("ssh").join("key.tmp");
                     if std::fs::write(&key_tmp, &priv_data).is_ok() {
                         cmd.arg("-fw_cfg")
                            .arg(format!("name=opt/winmux/keyfile,file={}",
                                 key_tmp.to_string_lossy()));
+                        // Public key — guest init додасть у /home/winmux/.ssh/authorized_keys
+                        // для passwordless SSH від хоста до guest
+                        let pub_tmp = cfg.workdir.join("ssh").join("pub.tmp");
+                        let _ = std::fs::write(&pub_tmp, &pub_key);
+                        cmd.arg("-fw_cfg")
+                           .arg(format!("name=opt/winmux/pubkey,file={}",
+                                pub_tmp.to_string_lossy()));
                         auto_mount_ok = true;
                         crate::log_info(&format!(
-                            "auto-mount: user={} profile={} key={}",
-                            username, userprofile, key_tmp.display()
+                            "auto-mount: user={} profile={} (passwordless guest SSH enabled)",
+                            username, userprofile
                         ));
                     }
                 }

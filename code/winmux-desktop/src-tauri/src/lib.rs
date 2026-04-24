@@ -523,6 +523,51 @@ pub fn run() {
             telemetry::init();
             telemetry::track("app_start", serde_json::json!({}));
 
+            // Zero-config UX: auto-start VM в фоні (через 200ms щоб UI вспів стати на ноги).
+            // Користувач може вимкнути через winmux.toml: auto_start = false
+            let auto_start = std::env::current_exe().ok()
+                .and_then(|exe| exe.parent().map(|p| p.join("winmux.toml")))
+                .and_then(|p| std::fs::read_to_string(p).ok())
+                .map(|s| !s.lines().any(|l| l.trim() == "auto_start = false"))
+                .unwrap_or(true);
+            if auto_start {
+                let app_clone = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    if let Some(state) = app_clone.try_state::<AppState>() {
+                        let app_log = app_clone.clone();
+                        let app_status = app_clone.clone();
+                        let app_status2 = app_clone.clone();
+                        if state.controller.lock().unwrap().is_none() {
+                            let result = controller::spawn(
+                                app_clone.clone(),
+                                move |line| { let _ = app_log.emit("controller-log", line); },
+                                move |status| {
+                                    let _ = app_status.emit("vm-status", status.clone());
+                                    if status.state == "running" {
+                                        let app_term = app_status2.clone();
+                                        if let Some(ws) = app_term.try_state::<AppState>() {
+                                            let already = !ws.terminals.lock().unwrap().is_empty();
+                                            if !already {
+                                                std::thread::sleep(std::time::Duration::from_secs(2));
+                                                let _ = open_tab_internal(&app_term, &ws);
+                                            }
+                                        }
+                                    }
+                                },
+                            );
+                            match result {
+                                Ok(handle) => *state.controller.lock().unwrap() = Some(handle),
+                                Err(e) => {
+                                    let _ = app_clone.emit("controller-log",
+                                        format!("[desktop] auto-start failed: {e}"));
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
             // System tray
             let show_item = MenuItem::with_id(app, "show", "Show WinMux", true, None::<&str>)?;
             let start_item = MenuItem::with_id(app, "start", "Start VM", true, None::<&str>)?;

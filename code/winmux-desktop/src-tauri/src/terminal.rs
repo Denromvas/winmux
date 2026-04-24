@@ -53,16 +53,29 @@ where
         .context("openpty")?;
 
     // Командний рядок ssh — через Windows OpenSSH client (вбудований у Win10 1803+).
+    // Спершу пробуємо знайти SSH key (той самий, що для auto-mount) — для passwordless login.
+    let key_path = std::env::current_exe().ok()
+        .and_then(|exe| exe.parent().map(|p| p.join("ssh").join("id_winmux_ed25519")))
+        .filter(|p| p.exists());
+
     let mut cmd = CommandBuilder::new("ssh.exe");
     cmd.args([
         "-p", &host_port.to_string(),
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=NUL",
-        "-o", "PreferredAuthentications=password,keyboard-interactive",
-        "-tt",  // force tty allocation
-        "winmux@127.0.0.1",
+        "-o", "BatchMode=no",
+        "-tt",
     ]);
-    // Хорошy practice — set TERM
+    if let Some(kp) = &key_path {
+        cmd.args([
+            "-i", kp.to_str().unwrap_or(""),
+            "-o", "IdentitiesOnly=yes",
+            "-o", "PreferredAuthentications=publickey,password",
+        ]);
+    } else {
+        cmd.args(["-o", "PreferredAuthentications=password,keyboard-interactive"]);
+    }
+    cmd.arg("winmux@127.0.0.1");
     cmd.env("TERM", "xterm-256color");
 
     let child = pair.slave.spawn_command(cmd).context("spawn ssh")?;
