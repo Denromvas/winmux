@@ -43,10 +43,12 @@ where
     F: Fn(String) + Send + Sync + 'static,
 {
     let pty_system = native_pty_system();
+    // Велика стартова матриця: щоб TUI (Claude Code, btop) не малював у "вузькому" 100x30,
+    // поки фронтенд не пришле реальний resize_term із xterm.fit().
     let pair = pty_system
         .openpty(PtySize {
-            rows: 30,
-            cols: 100,
+            rows: 80,
+            cols: 240,
             pixel_width: 0,
             pixel_height: 0,
         })

@@ -25,11 +25,14 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
     const term = new XTerm({
       fontFamily: '"Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace',
       fontSize,
-      lineHeight: 1.2,
+      lineHeight: 1.0,
+      letterSpacing: 0,
       cursorBlink: true,
       cursorStyle: "block",
       scrollback: 5000,
       allowProposedApi: true,
+      smoothScrollDuration: 0,
+      drawBoldTextInBrightColors: true,
       theme,
     });
     const fit = new FitAddon();
@@ -38,12 +41,14 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
       invoke("open_url", { url }).catch(console.error);
     }));
     term.open(ref.current);
-    try {
-      const webgl = new WebglAddon();
-      webgl.onContextLoss(() => webgl.dispose());
-      term.loadAddon(webgl);
-    } catch {
-      try { term.loadAddon(new CanvasAddon()); } catch {}
+    // Canvas рендерер — стабільніший для TUI з box-drawing (Claude Code, btop, ranger).
+    // WebGL швидший але часто дає артефакти/накладання символів.
+    try { term.loadAddon(new CanvasAddon()); } catch {
+      try {
+        const webgl = new WebglAddon();
+        webgl.onContextLoss(() => webgl.dispose());
+        term.loadAddon(webgl);
+      } catch {}
     }
     fit.fit();
     termRef.current = term;
@@ -57,7 +62,16 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
     });
 
     const doFit = () => {
-      requestAnimationFrame(() => { try { fit.fit(); } catch {} });
+      requestAnimationFrame(() => {
+        try {
+          fit.fit();
+          // Примусово синхронізувати PTY з реальним розміром xterm.
+          // Без цього TUI (Claude Code) застряє в стартовому розмірі PTY і
+          // малює UI у "вузькому полі", залишаючи нижні рядки порожніми.
+          invoke("resize_term", { tabId, cols: term.cols, rows: term.rows }).catch(() => {});
+          term.refresh(0, term.rows - 1);
+        } catch {}
+      });
     };
     window.addEventListener("resize", doFit);
     const ro = new ResizeObserver(doFit);

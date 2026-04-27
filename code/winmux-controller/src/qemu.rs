@@ -27,25 +27,71 @@ mod ssh_setup {
         Ok((priv_key, pub_str.trim().to_string()))
     }
 
+    /// Detect if current user is in BUILTIN\Administrators group.
+    /// Windows OpenSSH for admins ignores ~/.ssh/authorized_keys and reads only
+    /// %PROGRAMDATA%\ssh\administrators_authorized_keys (default Match Group rule).
+    fn is_admin() -> bool {
+        // `net session` works only for admins. Cheap & reliable.
+        Command::new("net")
+            .args(["session"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+
+    /// Add pubkey to administrators_authorized_keys via takeown+icacls round-trip.
+    /// File is owned by SYSTEM with no Admin write — even admins need to claim it.
+    fn install_admin_pubkey(pub_key: &str) -> Result<()> {
+        let f = r"C:\ProgramData\ssh\administrators_authorized_keys";
+        // 1. Take ownership and grant ourselves Full
+        let _ = Command::new("takeown").args(["/F", f]).output();
+        let me = std::env::var("USERNAME").unwrap_or_default();
+        let _ = Command::new("icacls").args([f, "/grant", &format!("{me}:F")]).output();
+
+        // 2. Read current, append if missing
+        let cur = std::fs::read_to_string(f).unwrap_or_default();
+        let key_body = pub_key.split_whitespace().nth(1).unwrap_or("");
+        if !key_body.is_empty() && !cur.contains(key_body) {
+            let mut new = cur.trim_end().to_string();
+            new.push_str("\r\n");
+            new.push_str(pub_key.trim());
+            new.push_str("\r\n");
+            std::fs::write(f, &new).context("write administrators_authorized_keys")?;
+            crate::log_info(&format!("added pubkey to {f}"));
+        }
+
+        // 3. Restore canonical perms (SYSTEM:F + BUILTIN\Administrators:F via SID — locale-safe)
+        let _ = Command::new("icacls").args([
+            f, "/inheritance:r",
+            "/grant", "*S-1-5-18:F",       // NT AUTHORITY\SYSTEM
+            "/grant", "*S-1-5-32-544:F",   // BUILTIN\Administrators
+        ]).output();
+        Ok(())
+    }
+
     /// Add public key to user's SSH server authorized_keys.
     /// For non-admin: %USERPROFILE%\.ssh\authorized_keys
     /// For admin: %PROGRAMDATA%\ssh\administrators_authorized_keys (special Windows OpenSSH rule)
     pub fn install_pubkey(pub_key: &str) -> Result<String> {
-        let home = std::env::var("USERPROFILE").context("USERPROFILE not set")?;
-        let ssh_dir = std::path::Path::new(&home).join(".ssh");
-        std::fs::create_dir_all(&ssh_dir).ok();
-        let auth_path = ssh_dir.join("authorized_keys");
+        if is_admin() {
+            install_admin_pubkey(pub_key)?;
+        } else {
+            let home = std::env::var("USERPROFILE").context("USERPROFILE not set")?;
+            let ssh_dir = std::path::Path::new(&home).join(".ssh");
+            std::fs::create_dir_all(&ssh_dir).ok();
+            let auth_path = ssh_dir.join("authorized_keys");
 
-        let mut current = std::fs::read_to_string(&auth_path).unwrap_or_default();
-        if !current.contains(pub_key) {
-            if !current.is_empty() && !current.ends_with('\n') { current.push('\n'); }
-            current.push_str(pub_key);
-            current.push('\n');
-            std::fs::write(&auth_path, &current).context("write authorized_keys")?;
-            crate::log_info(&format!("added pubkey to {}", auth_path.display()));
+            let mut current = std::fs::read_to_string(&auth_path).unwrap_or_default();
+            if !current.contains(pub_key) {
+                if !current.is_empty() && !current.ends_with('\n') { current.push('\n'); }
+                current.push_str(pub_key);
+                current.push('\n');
+                std::fs::write(&auth_path, &current).context("write authorized_keys")?;
+                crate::log_info(&format!("added pubkey to {}", auth_path.display()));
+            }
         }
-
-        // Determine username
         Ok(std::env::var("USERNAME").unwrap_or_default())
     }
 }
