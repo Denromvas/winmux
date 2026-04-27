@@ -408,9 +408,9 @@ export default function App() {
               }
             }
           },
-          { id: "url.docs", title: "Open documentation", run: () => invoke("open_url", { url: "https://denromvas.website/winmux/docs/" }) },
+          { id: "url.docs", title: "Open documentation", run: () => invoke("open_url", { url: "https://github.com/Denromvas/winmux/blob/main/docs/TZ.md" }) },
           { id: "url.github", title: "Open GitHub repo", run: () => invoke("open_url", { url: "https://github.com/Denromvas/winmux" }) },
-          { id: "url.landing", title: "Open winmux website", run: () => invoke("open_url", { url: "https://denromvas.website/winmux/" }) },
+          { id: "url.landing", title: "Open winmux website", run: () => invoke("open_url", { url: "https://github.com/Denromvas/winmux" }) },
           { id: "claude.auto", title: "Run claude in auto-mode (--dangerously-skip-permissions)",
             hint: "Opens new tab with auto-mode prompt — Claude executes everything without asking",
             run: async () => {

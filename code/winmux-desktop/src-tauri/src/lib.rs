@@ -279,7 +279,7 @@ fn check_update() -> Result<UpdateInfo, String> {
     let res = ureq::AgentBuilder::new()
         .timeout(std::time::Duration::from_secs(8))
         .build()
-        .get("https://denromvas.website/winmux/version.json")
+        .get("https://raw.githubusercontent.com/Denromvas/winmux/main/web/version.json")
         .call()
         .map_err(|e| format!("network: {e}"))?;
     let body: serde_json::Value = res.into_json().map_err(|e| e.to_string())?;
