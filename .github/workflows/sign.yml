@@ -1,0 +1,66 @@
+name: Sign release artifacts
+
+# Triggered when you upload installers to a GitHub Release.
+# Submits each .exe to SignPath.io (free for OSS) and replaces the
+# unsigned asset with the signed copy.
+#
+# Setup needed once:
+#   1. Register project at https://signpath.io (free OSS tier)
+#   2. Add GitHub Actions secret SIGNPATH_API_TOKEN
+#   3. Add SIGNPATH_ORG_ID and SIGNPATH_PROJECT_SLUG secrets
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.5)"
+        required: true
+
+permissions:
+  contents: write   # needed to overwrite release assets
+
+jobs:
+  sign:
+    if: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          [ -z "$TAG" ] && TAG="${{ inputs.tag }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts
+          gh release download "${{ steps.tag.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --pattern '*.exe' --dir artifacts/
+
+      - name: Submit signing requests to SignPath
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: installers
+          github-artifact-id: artifacts
+          wait-for-completion: true
+          output-artifact-directory: signed/
+
+      - name: Replace release assets with signed copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd signed
+          for f in *.exe; do
+            echo "Uploading signed $f..."
+            gh release upload "${{ steps.tag.outputs.tag }}" "$f" \
+              --repo "${{ github.repository }}" --clobber
+          done

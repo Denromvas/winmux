@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -16,12 +16,16 @@ interface VmStatus {
   guest_kernel?: string;
 }
 
+type TabKind = "term" | "browser";
+
 interface Tab {
   id: number;          // tab logical id (== first pane's id)
   title: string;
-  panes: number[];     // pane ids (each one is a backend tab/PTY)
+  kind: TabKind;
+  panes: number[];     // pane ids (each one is a backend tab/PTY) — only for term
   layout: "single" | "h-split" | "v-split";
   focusedPane: number;
+  url?: string;        // for kind=browser
 }
 
 const themes: Record<string, any> = {
@@ -83,8 +87,8 @@ export default function App() {
     const u3 = listen<number>("tab-opened", (e) => {
       const id = e.payload;
       setTabs(prev => {
-        if (prev.some(t => t.panes.includes(id))) return prev;
-        return [...prev, { id, title: `bash ${id}`, panes: [id], layout: "single", focusedPane: id }];
+        if (prev.some(t => t.kind === "term" && t.panes.includes(id))) return prev;
+        return [...prev, { id, title: `bash ${id}`, kind: "term", panes: [id], layout: "single", focusedPane: id }];
       });
       setActiveTab(id);
     });
@@ -97,10 +101,17 @@ export default function App() {
   const newTab = async () => {
     try { await invoke("open_tab"); } catch (e) { console.error(e); }
   };
+
+  const openBrowserTab = (url: string) => {
+    // Synthetic id (negative to avoid clash with backend tab ids).
+    const id = -Math.floor(Date.now() % 1_000_000);
+    const u = url.startsWith("http") ? url : `http://${url}`;
+    setTabs(prev => [...prev, { id, title: new URL(u).host, kind: "browser", panes: [], layout: "single", focusedPane: id, url: u }]);
+    setActiveTab(id);
+  };
   const closeTab = async (id: number) => {
-    // Закриваємо всі pane-и tabа
     const t = tabs.find(t => t.id === id);
-    if (t) {
+    if (t && t.kind === "term") {
       for (const p of t.panes) {
         try { await invoke("close_tab", { tabId: p }); } catch {}
       }
@@ -111,6 +122,8 @@ export default function App() {
       return next;
     });
   };
+
+  const btnStyle: React.CSSProperties = { padding: "4px 10px", background: "#414868", color: "#e0e6f0", border: "none", borderRadius: 3, cursor: "pointer", fontSize: 13 };
 
   const splitPane = async (orientation: "h-split" | "v-split") => {
     if (activeTab === null) return;
@@ -237,8 +250,12 @@ export default function App() {
             ) : (
               <ul className="ports">
                 {status.ports.map(p => (
-                  <li key={p}>
-                    <a onClick={(e) => { e.preventDefault(); invoke("open_url", { url: `http://127.0.0.1:${p}` }); }}>:{p}</a>
+                  <li key={p} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <a style={{ flex: 1, cursor: "pointer" }}
+                       onClick={() => openBrowserTab(`http://127.0.0.1:${p}`)}
+                       title="Open in WinMux browser tab">:{p}</a>
+                    <button title="Open in system browser" style={{ padding: "0 4px", fontSize: 10, background: "transparent", border: "1px solid #4a5680", color: "#a3c9e2", borderRadius: 2, cursor: "pointer" }}
+                            onClick={() => invoke("open_url", { url: `http://127.0.0.1:${p}` })}>↗</button>
                   </li>
                 ))}
               </ul>
@@ -321,7 +338,27 @@ export default function App() {
                 <p>Гість завантажений. Натисни <b>+</b> щоб відкрити термінал.</p>
               </div>
             )}
-            {tabs.map(tab => (
+            {tabs.map(tab => tab.kind === "browser" ? (
+              <div key={tab.id} style={{ display: activeTab === tab.id ? "flex" : "none", flexDirection: "column", height: "100%", background: "#0a0e27" }}>
+                <div style={{ display: "flex", gap: 4, padding: 4, background: "#1a1b26", borderBottom: "1px solid #414868" }}>
+                  <button onClick={() => { const f = document.getElementById(`bf-${tab.id}`) as HTMLIFrameElement | null; f?.contentWindow?.history.back(); }} title="Back" style={btnStyle}>←</button>
+                  <button onClick={() => { const f = document.getElementById(`bf-${tab.id}`) as HTMLIFrameElement | null; f?.contentWindow?.history.forward(); }} title="Forward" style={btnStyle}>→</button>
+                  <button onClick={() => { const f = document.getElementById(`bf-${tab.id}`) as HTMLIFrameElement | null; if (f) f.src = f.src; }} title="Reload" style={btnStyle}>⟳</button>
+                  <input
+                    defaultValue={tab.url}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const url = (e.currentTarget.value.startsWith("http") ? e.currentTarget.value : `http://${e.currentTarget.value}`);
+                        setTabs(p => p.map(t => t.id === tab.id ? { ...t, url, title: new URL(url).host } : t));
+                      }
+                    }}
+                    style={{ flex: 1, background: "#0a0e27", color: "#e0e6f0", border: "1px solid #4a5680", borderRadius: 3, padding: "4px 8px", outline: "none", fontFamily: "monospace", fontSize: 12 }}
+                  />
+                  <button onClick={() => invoke("open_url", { url: tab.url })} title="Open in system browser" style={btnStyle}>↗</button>
+                </div>
+                <iframe id={`bf-${tab.id}`} src={tab.url} style={{ flex: 1, border: "none", background: "white" }} />
+              </div>
+            ) : (
               <div
                 key={tab.id}
                 className="tab-content"
@@ -442,6 +479,13 @@ export default function App() {
               setTimeout(() => {
                 invoke("send_input", { tabId: id, data: 'winmux-mount -h\n' });
               }, 1500);
+            }
+          },
+          { id: "browser.open", title: "🌐 Open URL in new browser tab",
+            hint: "Embedded browser inside WinMux — useful for forwarded ports (3000, 8080, ...)",
+            run: () => {
+              const u = prompt("URL (or just localhost:port):", "http://127.0.0.1:3000");
+              if (u) openBrowserTab(u);
             }
           },
           { id: "term.search", title: "🔍 Search in terminal scrollback",
