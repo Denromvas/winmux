@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.4",
-    "released_at": "2026-04-27",
-    "notes": "v0.1.4 — Hyper-V auto-TCG + VM snapshots:\n- Auto-detect: when full Hyper-V role is enabled (root partition), controller skips WHPX (would crash in 7s) and uses TCG immediately\n- New CLI: winmux snapshot {save,restore,delete,list} — save/restore guest VM state (great before claude --auto runs)\n- New command palette entries in Desktop: Save snapshot, Restore snapshot, List snapshots, Delete snapshot\n- SSH key visible inside guest at /workspace/winmux-keys/* if you copied it from the new install helper",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.4/winmux-desktop-setup-v0.1.4.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.4/winmux-cli-setup-v0.1.4.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.4/winmux-desktop-portable-v0.1.4.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.4/winmux-cli-portable-v0.1.4.zip",
+    "latest": "0.1.5",
+    "released_at": "2026-04-30",
+    "notes": "v0.1.5 — Search in scrollback:\n- Ctrl+F in any terminal → instant find with highlight + ↑↓ navigation + ↵/Shift+↵ next/prev + Esc close\n- Command palette entry: 🔍 Search in terminal scrollback\n- Especially useful for finding things in long claude --auto runs",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.5/winmux-desktop-setup-v0.1.5.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.5/winmux-cli-setup-v0.1.5.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.5/winmux-desktop-portable-v0.1.5.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.5/winmux-cli-portable-v0.1.5.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

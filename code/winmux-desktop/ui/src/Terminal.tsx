@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Terminal as XTerm } from "@xterm/xterm";
@@ -6,6 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { CanvasAddon } from "@xterm/addon-canvas";
+import { SearchAddon } from "@xterm/addon-search";
 import "@xterm/xterm/css/xterm.css";
 
 export interface TerminalProps {
@@ -19,6 +20,9 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
   const ref = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const searchRef = useRef<SearchAddon | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!ref.current) return;
@@ -50,9 +54,26 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
         term.loadAddon(webgl);
       } catch {}
     }
+    const search = new SearchAddon();
+    term.loadAddon(search);
     fit.fit();
     termRef.current = term;
     fitRef.current = fit;
+    searchRef.current = search;
+
+    // Ctrl+F → toggle search bar (intercept before xterm)
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type === "keydown" && ev.ctrlKey && (ev.key === "f" || ev.key === "F")) {
+        ev.preventDefault();
+        setSearchOpen(prev => !prev);
+        return false;
+      }
+      if (ev.type === "keydown" && ev.key === "Escape" && searchOpen) {
+        setSearchOpen(false);
+        return false;
+      }
+      return true;
+    });
 
     term.onData((data) => {
       invoke("send_input", { tabId, data }).catch(console.error);
@@ -100,14 +121,35 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
     }
   }, [active]);
 
+  const opts = { regex: false, wholeWord: false, caseSensitive: false,
+    decorations: { matchBackground: "#ffd166", activeMatchBackground: "#ff6b6b",
+      matchOverviewRuler: "#ffd166", activeMatchColorOverviewRuler: "#ff6b6b" } };
+  const findNext = () => searchRef.current?.findNext(searchQuery, opts);
+  const findPrev = () => searchRef.current?.findPrevious(searchQuery, opts);
+
   return (
-    <div
-      ref={ref}
-      style={{
-        width: "100%",
-        height: "100%",
-        display: active ? "block" : "none",
-      }}
-    />
+    <div style={{ width: "100%", height: "100%", display: active ? "flex" : "none", flexDirection: "column", position: "relative" }}>
+      <div ref={ref} style={{ flex: 1, minHeight: 0 }} />
+      {searchOpen && (
+        <div style={{ position: "absolute", top: 4, right: 4, zIndex: 10,
+          background: "#1a1b26", border: "1px solid #414868", borderRadius: 4,
+          padding: 4, display: "flex", gap: 4, alignItems: "center", fontSize: 12 }}>
+          <input
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); searchRef.current?.findNext(e.target.value, opts); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.shiftKey ? findPrev() : findNext());
+              if (e.key === "Escape") { setSearchOpen(false); searchRef.current?.clearDecorations(); }
+            }}
+            placeholder="Find in scrollback…"
+            style={{ background: "#0a0e27", color: "#e0e6f0", border: "1px solid #4a5680", borderRadius: 3, padding: "3px 6px", outline: "none", width: 180 }}
+          />
+          <button onClick={findPrev} style={{ padding: "2px 8px", background: "#414868", color: "#e0e6f0", border: "none", borderRadius: 3, cursor: "pointer" }}>↑</button>
+          <button onClick={findNext} style={{ padding: "2px 8px", background: "#414868", color: "#e0e6f0", border: "none", borderRadius: 3, cursor: "pointer" }}>↓</button>
+          <button onClick={() => { setSearchOpen(false); searchRef.current?.clearDecorations(); }} style={{ padding: "2px 8px", background: "#3a3a4a", color: "#e0e6f0", border: "none", borderRadius: 3, cursor: "pointer" }}>✕</button>
+        </div>
+      )}
+    </div>
   );
 }

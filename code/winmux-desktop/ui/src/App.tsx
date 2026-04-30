@@ -444,6 +444,13 @@ export default function App() {
               }, 1500);
             }
           },
+          { id: "term.search", title: "🔍 Search in terminal scrollback",
+            hint: "Same as Ctrl+F inside any terminal",
+            run: () => {
+              const ev = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true });
+              document.activeElement?.dispatchEvent(ev);
+            }
+          },
           { id: "snapshot.save", title: "📸 Save VM snapshot",
             hint: "Freeze current guest state — restore later if claude --auto breaks something",
             run: async () => {
