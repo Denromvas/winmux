@@ -444,6 +444,49 @@ export default function App() {
               }, 1500);
             }
           },
+          { id: "snapshot.save", title: "📸 Save VM snapshot",
+            hint: "Freeze current guest state — restore later if claude --auto breaks something",
+            run: async () => {
+              const name = prompt("Snapshot name (letters/digits/_, no spaces):", `snap-${new Date().toISOString().slice(0,16).replace(/[T:-]/g,'')}`);
+              if (!name) return;
+              try {
+                const out = await invoke<string>("snapshot_save", { name });
+                alert(`✓ ${out.trim() || `Saved '${name}'`}`);
+              } catch (e) { alert(`Failed: ${e}`); }
+            }
+          },
+          { id: "snapshot.restore", title: "⏪ Restore VM snapshot",
+            hint: "Discards current state and reverts to a saved snapshot",
+            run: async () => {
+              try {
+                const list = await invoke<string>("snapshot_list");
+                const name = prompt(`Available snapshots:\n${list}\n\nName to restore:`);
+                if (!name) return;
+                if (!confirm(`Restore '${name}'? Current state and all open terminals will be lost.`)) return;
+                const out = await invoke<string>("snapshot_restore", { name });
+                alert(`✓ ${out.trim()}`);
+              } catch (e) { alert(`Failed: ${e}`); }
+            }
+          },
+          { id: "snapshot.list", title: "📋 List VM snapshots",
+            run: async () => {
+              try {
+                const list = await invoke<string>("snapshot_list");
+                alert(list || "No snapshots yet.");
+              } catch (e) { alert(`Failed: ${e}`); }
+            }
+          },
+          { id: "snapshot.delete", title: "🗑 Delete VM snapshot",
+            run: async () => {
+              try {
+                const list = await invoke<string>("snapshot_list");
+                const name = prompt(`Available snapshots:\n${list}\n\nName to delete:`);
+                if (!name) return;
+                const out = await invoke<string>("snapshot_delete", { name });
+                alert(`✓ ${out.trim()}`);
+              } catch (e) { alert(`Failed: ${e}`); }
+            }
+          },
         ];
         return <CommandPalette commands={cmds} onClose={() => setShowPalette(false)} />;
       })()}

@@ -473,6 +473,52 @@ fn window_close(window: tauri::Window) -> Result<(), String> {
     window.close().map_err(|e| e.to_string())
 }
 
+// ---------- Snapshots: shell out to bundled winmux.exe ----------
+
+fn winmux_exe_path() -> std::path::PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("winmux.exe")))
+        .unwrap_or_else(|| std::path::PathBuf::from("winmux.exe"))
+}
+
+fn run_winmux(args: &[&str]) -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let out = std::process::Command::new(winmux_exe_path())
+        .args(args)
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| e.to_string())?;
+    let s = String::from_utf8_lossy(&out.stdout).to_string()
+        + &String::from_utf8_lossy(&out.stderr);
+    if !out.status.success() {
+        Err(s)
+    } else {
+        Ok(s)
+    }
+}
+
+#[tauri::command]
+fn snapshot_save(name: String) -> Result<String, String> {
+    run_winmux(&["snapshot", "save", &name])
+}
+
+#[tauri::command]
+fn snapshot_restore(name: String) -> Result<String, String> {
+    run_winmux(&["snapshot", "restore", &name])
+}
+
+#[tauri::command]
+fn snapshot_delete(name: String) -> Result<String, String> {
+    run_winmux(&["snapshot", "delete", &name])
+}
+
+#[tauri::command]
+fn snapshot_list() -> Result<String, String> {
+    run_winmux(&["snapshot", "list"])
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -503,6 +549,10 @@ pub fn run() {
             window_minimize,
             window_maximize,
             window_close,
+            snapshot_save,
+            snapshot_restore,
+            snapshot_delete,
+            snapshot_list,
         ])
         .setup(|app| {
             // CLI args: якщо запущено через "Open in WinMux" з Explorer →

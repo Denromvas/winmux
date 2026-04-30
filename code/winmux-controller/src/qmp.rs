@@ -55,7 +55,7 @@ impl QmpClient {
         Ok(())
     }
 
-    fn send_raw(&self, msg: &str) -> Result<()> {
+    pub fn send_raw(&self, msg: &str) -> Result<()> {
         let mut s = self.write_half.lock().unwrap();
         writeln!(s, "{msg}").context("QMP write")?;
         s.flush().ok();
@@ -77,6 +77,22 @@ impl QmpClient {
 
     pub fn hostfwd_remove(&self, host_port: u16, guest_port: u16) -> Result<()> {
         self.hmp(&format!("hostfwd_remove tcp:127.0.0.1:{host_port}-:{guest_port}"))
+    }
+
+    /// Save VM state into qcow2 internal snapshot. Stops VM briefly.
+    pub fn snapshot_save(&self, name: &str) -> Result<()> {
+        self.hmp(&format!("savevm {name}"))
+    }
+
+    /// Restore VM state. Live state replaced — terminals lose connection,
+    /// must reconnect after.
+    pub fn snapshot_restore(&self, name: &str) -> Result<()> {
+        self.hmp(&format!("loadvm {name}"))
+    }
+
+    /// Delete snapshot.
+    pub fn snapshot_delete(&self, name: &str) -> Result<()> {
+        self.hmp(&format!("delvm {name}"))
     }
 
     pub fn command_sender(&self) -> CommandHandle {

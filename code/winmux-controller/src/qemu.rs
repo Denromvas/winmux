@@ -96,6 +96,36 @@ mod ssh_setup {
     }
 }
 
+/// Detect Hyper-V root partition (full Hyper-V role enabled), distinct from
+/// HypervisorPlatform (WHPX user API). When the full role is on, the OS runs
+/// as a guest of its own hypervisor and user-mode WHPX VMs crash early.
+fn has_full_hyperv() -> bool {
+    // Method 1 (cheap): registry — Hyper-V services exist when role is installed.
+    // BUT they exist on Win11 Pro by default even without the role. Check service state instead.
+    let svc = Command::new("sc")
+        .args(["query", "vmms"])  // Hyper-V VMM service
+        .output();
+    if let Ok(out) = svc {
+        let s = String::from_utf8_lossy(&out.stdout);
+        if s.contains("RUNNING") {
+            return true;
+        }
+    }
+    // Method 2: hypervisor presence flag — set when Windows boots under a hypervisor
+    // (i.e. Hyper-V root or any other host). On a bare metal Win without Hyper-V it is 0.
+    let cpu = Command::new("powershell")
+        .args(["-NoProfile", "-Command",
+            "(Get-CimInstance Win32_ComputerSystem).HypervisorPresent"])
+        .output();
+    if let Ok(out) = cpu {
+        let s = String::from_utf8_lossy(&out.stdout).trim().to_lowercase();
+        if s == "true" {
+            return true;
+        }
+    }
+    false
+}
+
 pub struct Vm {
     child: Child,
 }
@@ -160,6 +190,12 @@ impl Vm {
                     .map(|s| s.trim().to_string()).unwrap_or_default();
                 if last == "whpx-failed" {
                     crate::log_info("auto-accel: WHPX previously failed → using TCG");
+                    "tcg".to_string()
+                } else if has_full_hyperv() {
+                    // Якщо повний Hyper-V (Microsoft-Hyper-V-All) увімкнений —
+                    // root partition забирає гипервізор, а user-mode WHPX VM
+                    // стартує і помирає за ~7 сек з code=1. Не пробуємо.
+                    crate::log_info("auto-accel: Hyper-V Platform full mode detected → using TCG (WHPX would crash)");
                     "tcg".to_string()
                 } else {
                     crate::log_info("auto-accel: trying WHPX (will fallback to TCG if it dies fast)");

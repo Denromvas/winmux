@@ -50,8 +50,23 @@ enum Cmd {
     Status,
     /// Зупинити QEMU процеси (force kill)
     Stop,
+    /// Snapshots: save / restore / list / delete
+    #[command(subcommand)]
+    Snapshot(SnapshotCmd),
     /// Версія
     Version,
+}
+
+#[derive(Subcommand, Debug)]
+enum SnapshotCmd {
+    /// Save current VM state under <name> (VM briefly pauses).
+    Save { name: String },
+    /// Restore VM to <name> snapshot (current state lost!).
+    Restore { name: String },
+    /// Delete <name> snapshot from disk image.
+    Delete { name: String },
+    /// List snapshots stored in user.qcow2.
+    List,
 }
 
 fn main() -> Result<()> {
@@ -79,6 +94,9 @@ fn main() -> Result<()> {
         }
         Cmd::Stop => {
             cmd_stop()?;
+        }
+        Cmd::Snapshot(sc) => {
+            cmd_snapshot(sc)?;
         }
     }
     Ok(())
@@ -180,6 +198,68 @@ fn cmd_stop() -> Result<()> {
                 .status();
         }
         println!("Killed: qemu-system-x86_64, winmux");
+    }
+    Ok(())
+}
+
+fn read_qmp_port() -> u16 {
+    std::env::current_exe().ok()
+        .and_then(|exe| exe.parent().map(|p| p.join("winmux.toml")))
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| s.lines()
+            .find_map(|l| l.trim().strip_prefix("qmp_port = ")
+                .and_then(|v| v.trim().parse().ok())))
+        .unwrap_or(4444)
+}
+
+fn cmd_snapshot(sc: SnapshotCmd) -> Result<()> {
+    use std::time::Duration;
+    let port = read_qmp_port();
+    let addr = format!("127.0.0.1:{port}");
+    match sc {
+        SnapshotCmd::List => {
+            // Use qemu-img which works without a running VM.
+            let exe_dir = std::env::current_exe()?.parent().unwrap().to_path_buf();
+            let img = exe_dir.join("qemu/qemu-img.exe");
+            let disk = exe_dir.join("rootfs/user.qcow2");
+            if !disk.exists() {
+                println!("No user.qcow2 yet (start VM at least once).");
+                return Ok(());
+            }
+            let out = std::process::Command::new(&img)
+                .args(["snapshot", "-l"])
+                .arg(&disk)
+                .output()
+                .context("qemu-img snapshot -l")?;
+            print!("{}", String::from_utf8_lossy(&out.stdout));
+            if !out.status.success() {
+                eprint!("{}", String::from_utf8_lossy(&out.stderr));
+            }
+        }
+        SnapshotCmd::Save { name } => {
+            let qmp = qmp::QmpClient::connect_with_retry(&addr, Duration::from_secs(2))
+                .context("connect QMP — VM probably not running. Start it first with: winmux start")?;
+            qmp.send_raw(r#"{"execute":"qmp_capabilities"}"#)?;
+            std::thread::sleep(Duration::from_millis(150));
+            qmp.snapshot_save(&name)?;
+            println!("Saved snapshot '{name}'. Note: VM was paused briefly while writing.");
+        }
+        SnapshotCmd::Restore { name } => {
+            let qmp = qmp::QmpClient::connect_with_retry(&addr, Duration::from_secs(2))
+                .context("connect QMP — VM probably not running. Start it first with: winmux start")?;
+            qmp.send_raw(r#"{"execute":"qmp_capabilities"}"#)?;
+            std::thread::sleep(Duration::from_millis(150));
+            qmp.snapshot_restore(&name)?;
+            println!("Restored '{name}'. Reconnect terminals — old SSH sessions are gone.");
+        }
+        SnapshotCmd::Delete { name } => {
+            let qmp = qmp::QmpClient::connect_with_retry(&addr, Duration::from_secs(2))
+                .context("connect QMP — VM probably not running. Start it first with: winmux start")?;
+            qmp.send_raw(r#"{"execute":"qmp_capabilities"}"#)?;
+            std::thread::sleep(Duration::from_millis(150));
+            qmp.snapshot_delete(&name)?;
+            println!("Deleted snapshot '{name}'.");
+        }
     }
     Ok(())
 }
