@@ -247,6 +247,41 @@ fn opened_path(state: State<'_, AppState>) -> Option<String> {
     state.opened_path.lock().unwrap().clone()
 }
 
+/// Save clipboard image (if any) to %USERPROFILE%\.winmux-clipboard\paste-TIMESTAMP.png
+/// and return the guest-side path (/workspace/.winmux-clipboard/...) — Claude Code
+/// running inside the guest can then attach it via that path.
+/// Returns Err(message) if no image in clipboard or save fails.
+#[tauri::command]
+fn paste_image_to_guest() -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let userprofile = std::env::var("USERPROFILE").map_err(|_| "USERPROFILE not set".to_string())?;
+    let dir = std::path::Path::new(&userprofile).join(".winmux-clipboard");
+    let _ = std::fs::create_dir_all(&dir);
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis()).unwrap_or(0);
+    let fname = format!("paste-{ts}.png");
+    let win_path = dir.join(&fname);
+
+    let ps = format!(
+        r#"Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$img=[System.Windows.Forms.Clipboard]::GetImage();if($img){{$img.Save('{}',[System.Drawing.Imaging.ImageFormat]::Png);Write-Output 'OK'}}else{{Write-Output 'NO_IMAGE'}}"#,
+        win_path.to_string_lossy().replace('\\', "\\\\")
+    );
+
+    let out = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-STA", "-Command", &ps])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| e.to_string())?;
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if !stdout.contains("OK") {
+        return Err("No image in clipboard (copy a screenshot first, e.g. Win+Shift+S)".to_string());
+    }
+    // Guest sees USERPROFILE at /workspace, so file is /workspace/.winmux-clipboard/<name>
+    Ok(format!("/workspace/.winmux-clipboard/{fname}"))
+}
+
 /// Tail last N lines of guest's ~/.winmux/claude.jsonl over SSH.
 /// Frontend polls this every 1s for the AI activity sidebar.
 /// Returns parsed lines (one JSON event per line) — frontend filters
@@ -583,6 +618,7 @@ pub fn run() {
             opened_path,
             load_project_config,
             ai_tail,
+            paste_image_to_guest,
             read_settings,
             write_settings,
             telemetry_status,

@@ -62,10 +62,22 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
     searchRef.current = search;
 
     // Ctrl+F → toggle search bar (intercept before xterm)
+    // Ctrl+Shift+V → if clipboard has image, save to host + inject guest path
     term.attachCustomKeyEventHandler((ev) => {
-      if (ev.type === "keydown" && ev.ctrlKey && (ev.key === "f" || ev.key === "F")) {
+      if (ev.type === "keydown" && ev.ctrlKey && !ev.shiftKey && (ev.key === "f" || ev.key === "F")) {
         ev.preventDefault();
         setSearchOpen(prev => !prev);
+        return false;
+      }
+      if (ev.type === "keydown" && ev.ctrlKey && ev.shiftKey && (ev.key === "V" || ev.key === "v")) {
+        ev.preventDefault();
+        invoke<string>("paste_image_to_guest").then(path => {
+          // Inject the path into terminal stdin → Claude picks it up as attachment
+          invoke("send_input", { tabId, data: path + " " });
+        }).catch(err => {
+          // Fall back: show notice in terminal
+          term.write(`\r\n\x1b[33m[paste-image] ${err}\x1b[0m\r\n`);
+        });
         return false;
       }
       if (ev.type === "keydown" && ev.key === "Escape" && searchOpen) {

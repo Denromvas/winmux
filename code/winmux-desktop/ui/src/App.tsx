@@ -545,6 +545,20 @@ export default function App() {
               }, 1500);
             }
           },
+          { id: "clipboard.image", title: "📋 Paste clipboard image to guest (Ctrl+Shift+V)",
+            hint: "Saves Windows-clipboard image to host, injects /workspace path so Claude can attach it",
+            run: async () => {
+              try {
+                const path = await invoke<string>("paste_image_to_guest");
+                if (activeTab !== null) {
+                  const tab = tabs.find(t => t.id === activeTab);
+                  const paneId = tab?.focusedPane;
+                  if (paneId !== undefined) await invoke("send_input", { tabId: paneId, data: path + " " });
+                  alert(`✓ Image saved → ${path}\nNow press Enter in the terminal (path is already typed)`);
+                }
+              } catch (e) { alert(`${e}`); }
+            }
+          },
           { id: "browser.open", title: "🌐 Open URL in new browser tab",
             hint: "Embedded browser inside WinMux — useful for forwarded ports (3000, 8080, ...)",
             run: () => {

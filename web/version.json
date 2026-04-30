@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.7",
+    "latest": "0.1.8",
     "released_at": "2026-04-30",
-    "notes": "v0.1.7 — AI sidebar + per-project config + tray status:\n- 🤖 AI activity sidebar: live tail of ~/.winmux/claude.jsonl (color-coded tool_use/tool_result/assistant events)\n- New palette command: 🤖 Run claude with live AI sidebar (auto-pipes JSONL to ~/.winmux/claude.jsonl)\n- Per-project config: drop .winmux/config.toml in any folder, set init_command — runs in first terminal when WinMux is launched against that folder via Explorer 'Open in WinMux'\n- Tray + window title now reflect VM state: 'WinMux • Running ✓' / 'Starting…' / 'Stopped'",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-desktop-setup-v0.1.7.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-cli-setup-v0.1.7.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-desktop-portable-v0.1.7.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-cli-portable-v0.1.7.zip",
+    "notes": "v0.1.8 — Clipboard image paste to guest (for Claude attachments):\n- Ctrl+Shift+V in any terminal: if Windows clipboard has an image, save it to %USERPROFILE%\\.winmux-clipboard\\paste-TIMESTAMP.png and inject the guest path /workspace/.winmux-clipboard/paste-... — Claude Code picks it up as attachment\n- Command palette: 📋 Paste clipboard image to guest\n- Solves 'No image found in clipboard. You're SSH'd; try scp?' error",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.8/winmux-desktop-setup-v0.1.8.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.8/winmux-cli-setup-v0.1.8.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.8/winmux-desktop-portable-v0.1.8.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.8/winmux-cli-portable-v0.1.8.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
