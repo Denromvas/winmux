@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.6",
+    "latest": "0.1.7",
     "released_at": "2026-04-30",
-    "notes": "v0.1.6 — Mini-browser inside WinMux + signing CI scaffold:\n- New tab type 'browser' with embedded WebView2: back/forward/reload/URL bar/open-in-system\n- Click any forwarded port in sidebar to open as a browser tab; ↗ button still opens in system browser\n- Command palette: 🌐 Open URL in new browser tab\n- .github/workflows/sign.yml ready for SignPath.io OSS signing — activates when SIGNPATH_API_TOKEN secret is set",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.6/winmux-desktop-setup-v0.1.6.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.6/winmux-cli-setup-v0.1.6.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.6/winmux-desktop-portable-v0.1.6.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.6/winmux-cli-portable-v0.1.6.zip",
+    "notes": "v0.1.7 — AI sidebar + per-project config + tray status:\n- 🤖 AI activity sidebar: live tail of ~/.winmux/claude.jsonl (color-coded tool_use/tool_result/assistant events)\n- New palette command: 🤖 Run claude with live AI sidebar (auto-pipes JSONL to ~/.winmux/claude.jsonl)\n- Per-project config: drop .winmux/config.toml in any folder, set init_command — runs in first terminal when WinMux is launched against that folder via Explorer 'Open in WinMux'\n- Tray + window title now reflect VM state: 'WinMux • Running ✓' / 'Starting…' / 'Stopped'",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-desktop-setup-v0.1.7.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-cli-setup-v0.1.7.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-desktop-portable-v0.1.7.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.7/winmux-cli-portable-v0.1.7.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

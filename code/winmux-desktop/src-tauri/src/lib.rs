@@ -14,7 +14,7 @@ mod telemetry;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tauri::{Manager, State, Emitter};
+use tauri::{Manager, State, Emitter, Listener};
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 #[allow(unused_imports)]
@@ -245,6 +245,49 @@ fn open_url(url: String) -> Result<(), String> {
 #[tauri::command]
 fn opened_path(state: State<'_, AppState>) -> Option<String> {
     state.opened_path.lock().unwrap().clone()
+}
+
+/// Tail last N lines of guest's ~/.winmux/claude.jsonl over SSH.
+/// Frontend polls this every 1s for the AI activity sidebar.
+/// Returns parsed lines (one JSON event per line) — frontend filters
+/// to assistant_message / tool_use / tool_result / thinking events.
+#[tauri::command]
+fn ai_tail() -> Result<Vec<serde_json::Value>, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let exe_dir = std::env::current_exe().ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .ok_or("no exe dir")?;
+    let key = exe_dir.join("ssh").join("id_winmux_ed25519");
+    let mut cmd = std::process::Command::new("ssh.exe");
+    cmd.args([
+        "-p", "2223", "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=NUL", "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=2",
+    ]);
+    if key.exists() {
+        cmd.arg("-i").arg(&key).arg("-o").arg("IdentitiesOnly=yes");
+    }
+    cmd.arg("winmux@127.0.0.1")
+       .arg("test -f ~/.winmux/claude.jsonl && tail -50 ~/.winmux/claude.jsonl");
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let out = cmd.output().map_err(|e| e.to_string())?;
+    let s = String::from_utf8_lossy(&out.stdout);
+    let events: Vec<serde_json::Value> = s.lines()
+        .filter_map(|l| serde_json::from_str(l.trim()).ok())
+        .collect();
+    Ok(events)
+}
+
+/// Read .winmux/config.toml from a host folder and return its content as JSON.
+/// Used by the frontend when WinMux is launched against a project folder
+/// (Explorer "Open in WinMux") to apply per-project init_command / RAM / etc.
+#[tauri::command]
+fn load_project_config(path: String) -> Option<serde_json::Value> {
+    let cfg = std::path::Path::new(&path).join(".winmux").join("config.toml");
+    let txt = std::fs::read_to_string(&cfg).ok()?;
+    let val: toml::Value = toml::from_str(&txt).ok()?;
+    serde_json::to_value(val).ok()
 }
 
 #[derive(serde::Serialize)]
@@ -538,6 +581,8 @@ pub fn run() {
             open_url,
             open_ssh,
             opened_path,
+            load_project_config,
+            ai_tail,
             read_settings,
             write_settings,
             telemetry_status,
@@ -629,9 +674,9 @@ pub fn run() {
                 &[&show_item, &start_item, &stop_item, &separator, &quit_item],
             )?;
 
-            let _tray = TrayIconBuilder::new()
+            let tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("WinMux")
+                .tooltip("WinMux • Stopped")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| {
@@ -678,6 +723,22 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            // Watch vm-status events from frontend → keep tray tooltip + window title in sync.
+            // This is our minimal "tray notification": passive but always visible on hover.
+            let tray_handle = tray.clone();
+            let app_handle_for_listen = app.handle().clone();
+            app.listen("vm-status", move |event| {
+                let payload = event.payload();
+                let state = if payload.contains("\"running\"") { "Running ✓" }
+                    else if payload.contains("\"starting\"") { "Starting…" }
+                    else if payload.contains("\"error\"") { "Error ⚠" }
+                    else { "Stopped" };
+                let _ = tray_handle.set_tooltip(Some(format!("WinMux • {state}")));
+                if let Some(w) = app_handle_for_listen.get_webview_window("main") {
+                    let _ = w.set_title(&format!("WinMux • {state}"));
+                }
+            });
             // Перехоплюємо закриття вікна щоб обов'язково kill дочірні процеси.
             let app_handle = app.handle().clone();
             if let Some(window) = app.get_webview_window("main") {

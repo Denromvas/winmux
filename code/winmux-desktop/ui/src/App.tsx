@@ -80,9 +80,29 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  const [aiEvents, setAiEvents] = useState<any[]>([]);
+  const projectInitFired = useRef(false);
+
   // Backend events
   useEffect(() => {
-    const u1 = listen<VmStatus>("vm-status", (e) => setStatus(e.payload));
+    const u1 = listen<VmStatus>("vm-status", async (e) => {
+      setStatus(e.payload);
+      // Coming up — apply per-project config (init_command in first terminal)
+      if (e.payload.state === "running" && !projectInitFired.current) {
+        projectInitFired.current = true;
+        try {
+          const projPath = await invoke<string | null>("opened_path");
+          if (projPath) {
+            const cfg = await invoke<any>("load_project_config", { path: projPath });
+            const initCmd = cfg?.init_command;
+            if (initCmd) {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => invoke("send_input", { tabId: id, data: initCmd + "\n" }), 1500);
+            }
+          }
+        } catch {}
+      }
+    });
     const u2 = listen<string>("controller-log", (e) => setLogs(p => [...p.slice(-200), e.payload]));
     const u3 = listen<number>("tab-opened", (e) => {
       const id = e.payload;
@@ -92,7 +112,16 @@ export default function App() {
       });
       setActiveTab(id);
     });
-    return () => { u1.then(f=>f()); u2.then(f=>f()); u3.then(f=>f()); };
+
+    // Poll AI events every 2s
+    const aiTimer = setInterval(async () => {
+      try {
+        const ev = await invoke<any[]>("ai_tail");
+        setAiEvents(ev.slice(-15));
+      } catch {}
+    }, 2000);
+
+    return () => { u1.then(f=>f()); u2.then(f=>f()); u3.then(f=>f()); clearInterval(aiTimer); };
   }, []);
 
   const startVm = () => invoke("start_vm").catch(console.error);
@@ -259,6 +288,32 @@ export default function App() {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+
+          <section>
+            <h3>🤖 AI activity {aiEvents.length > 0 && <span style={{ color: "#00ff88" }}>● live</span>}</h3>
+            {aiEvents.length === 0 ? (
+              <p className="empty" style={{ fontSize: 11 }}>
+                Run <code style={{ background: "#1a1b26", padding: "1px 4px", borderRadius: 2 }}>claude --output-format stream-json --verbose | tee ~/.winmux/claude.jsonl</code>
+                <br/>to see live thoughts here
+              </p>
+            ) : (
+              <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 11, fontFamily: "monospace" }}>
+                {aiEvents.map((ev, i) => {
+                  const t = ev.type || ev.event || "?";
+                  const color = t === "tool_use" ? "#ffd166" : t === "tool_result" ? "#80ffdb" : t === "assistant" ? "#a3c9e2" : "#4a5680";
+                  const text = ev.message?.content?.[0]?.text || ev.tool_name || ev.name || JSON.stringify(ev).slice(0, 100);
+                  return (
+                    <div key={i} style={{ borderLeft: `2px solid ${color}`, padding: "2px 6px", marginBottom: 2 }}>
+                      <span style={{ color, fontWeight: "bold" }}>{t}</span>
+                      <div style={{ color: "#a9b1d6", whiteSpace: "pre-wrap", overflow: "hidden", textOverflow: "ellipsis", maxHeight: 60 }}>
+                        {String(text).slice(0, 200)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </section>
 
@@ -462,6 +517,15 @@ export default function App() {
               const id = await invoke<number>("open_tab");
               setTimeout(() => {
                 invoke("send_input", { tabId: id, data: 'claude\n' });
+              }, 1500);
+            }
+          },
+          { id: "claude.monitored", title: "🤖 Run claude with live AI sidebar",
+            hint: "Pipes JSONL events to ~/.winmux/claude.jsonl — sidebar shows live activity",
+            run: async () => {
+              const id = await invoke<number>("open_tab");
+              setTimeout(() => {
+                invoke("send_input", { tabId: id, data: 'mkdir -p ~/.winmux && claude --dangerously-skip-permissions --output-format stream-json --verbose 2>&1 | tee ~/.winmux/claude.jsonl\n' });
               }, 1500);
             }
           },

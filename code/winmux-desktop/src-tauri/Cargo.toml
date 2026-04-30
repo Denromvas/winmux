@@ -26,6 +26,7 @@ open = "5"
 portable-pty = "0.8"
 ureq = { version = "2", features = ["tls", "json"], default-features = false }
 uuid = { version = "1", features = ["v4"] }
+toml = "0.8"
 
 [features]
 default = ["custom-protocol"]
