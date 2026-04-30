@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.2",
+    "latest": "0.1.3",
     "released_at": "2026-04-27",
-    "notes": "v0.1.2 — hosting decoupled:\n- version.json now served from raw.githubusercontent.com (no third-party hosting needed)\n- Updater fetches release metadata directly from GitHub\n- Same code as 0.1.1 (admin-user pubkey + qemu_fw_cfg + Canvas renderer fixes)",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.2/winmux-desktop-setup-v0.1.2.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.2/winmux-cli-setup-v0.1.2.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.2/winmux-desktop-portable-v0.1.2.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.2/winmux-cli-portable-v0.1.2.zip",
+    "notes": "v0.1.3 — WebView2 auto-bootstrap:\n- Installer now detects missing Microsoft Edge WebView2 Runtime and auto-downloads it via Evergreen bootstrapper (~1.5 MB, no admin prompt)\n- Fixes 'WebView2Loader.dll not found' error on Windows 10/Server 2019 without Edge updates\n- Same code as 0.1.2 (admin-user pubkey + qemu_fw_cfg + Canvas renderer + GitHub-only delivery)",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.3/winmux-desktop-setup-v0.1.3.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.3/winmux-cli-setup-v0.1.3.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.3/winmux-desktop-portable-v0.1.3.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.3/winmux-cli-portable-v0.1.3.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

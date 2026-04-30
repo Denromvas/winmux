@@ -5240,7 +5240,7 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "winmux-agent"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "serde",
@@ -5250,7 +5250,7 @@ dependencies = [
 
 [[package]]
 name = "winmux-controller"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -5264,7 +5264,7 @@ dependencies = [
 
 [[package]]
 name = "winmux-desktop"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "open",
@@ -5282,7 +5282,7 @@ dependencies = [
 
 [[package]]
 name = "winmux-init"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "nix 0.29.0",
  "winmux-shared",
@@ -5290,7 +5290,7 @@ dependencies = [
 
 [[package]]
 name = "winmux-shared"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",

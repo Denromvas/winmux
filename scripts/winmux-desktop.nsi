@@ -4,7 +4,7 @@
 ;-------------------------------------------------------------
 
 !ifndef VERSION
-  !define VERSION "0.1.2"
+  !define VERSION "0.1.3"
 !endif
 
 !ifndef BUILD_DIR
@@ -22,6 +22,7 @@
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 Name "${APP_NAME} ${VERSION}"
 OutFile "${DIST_DIR}\winmux-desktop-setup-v${VERSION}.exe"
@@ -60,6 +61,35 @@ Section "Install"
   File "${BUILD_DIR}\WebView2Loader.dll"
   File "${BUILD_DIR}\winmux.toml"
   File "${BUILD_DIR}\README.txt"
+
+  ; --- WebView2 Runtime check ---
+  ; Tauri requires Microsoft Edge WebView2 Runtime (separate from our bundled
+  ; WebView2Loader.dll, which is just the loader). Win11 + most updated Win10
+  ; have it. Older Win10 / fresh Server 2019 — no. Auto-install via Evergreen
+  ; bootstrapper if missing (~1.5 MB download, no admin prompt).
+  ReadRegStr $0 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+  ${If} $0 == ""
+    ReadRegStr $0 HKLM "SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+  ${EndIf}
+  ${If} $0 == ""
+    ReadRegStr $0 HKCU "SOFTWARE\Microsoft\EdgeUpdate\ClientState\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+  ${EndIf}
+  ${If} $0 == ""
+    DetailPrint "WebView2 Runtime not found — downloading via PowerShell (handles HTTPS redirects)..."
+    InitPluginsDir
+    nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri \"https://go.microsoft.com/fwlink/p/?LinkId=2124703\" -OutFile \"$PLUGINSDIR\\MicrosoftEdgeWebview2Setup.exe\" -UseBasicParsing -TimeoutSec 60; exit 0 } catch { exit 1 }"'
+    Pop $0
+    ${If} $0 == "0"
+      DetailPrint "Installing WebView2 Runtime (silent, no admin prompt)..."
+      ExecWait '"$PLUGINSDIR\MicrosoftEdgeWebview2Setup.exe" /silent /install' $1
+      DetailPrint "WebView2 installer exit code: $1"
+    ${Else}
+      DetailPrint "WebView2 download failed (PS exit $0). Install manually from https://go.microsoft.com/fwlink/p/?LinkId=2124703 if Desktop fails to launch."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "WinMux installed, but Microsoft Edge WebView2 Runtime is missing and could not be auto-downloaded. Open https://go.microsoft.com/fwlink/p/?LinkId=2124703 in a browser, install it, then launch WinMux Desktop."
+    ${EndIf}
+  ${Else}
+    DetailPrint "WebView2 Runtime detected: $0"
+  ${EndIf}
 
   SetOutPath "$INSTDIR\qemu"
   File /r "${BUILD_DIR}\qemu\*.*"
