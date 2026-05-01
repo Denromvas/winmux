@@ -58,27 +58,29 @@ fn handle_event(event: GuestEvent, port_mgr: &PortManager) {
             ));
         }
         GuestEvent::PortAdded { port, bind, proto, comm, .. } => {
+            // Skip noise: port 22 (sshd) is forwarded statically and not interesting to log,
+            // ditto port 4445 (winmux-agent itself).
+            if port == 22 || port == 4445 {
+                return;
+            }
             crate::log_info(&format!(
                 "port_added: {port}/{proto:?} bind={bind} comm={comm:?}"
             ));
-            // Скіпаємо порти, які ми вже самі прокинули вручну через config (наприклад 22 для SSH).
-            // Скіпаємо локальні порти, які тільки в гості потрібні (sshd на 22 — вже прокинутий)
-            if port == 22 {
-                return;
-            }
             if let Err(e) = port_mgr.add(port) {
                 crate::log_warn(&format!("hostfwd_add({port}) failed: {e}"));
             }
         }
         GuestEvent::PortRemoved { port, .. } => {
+            if port == 22 || port == 4445 { return; }
             crate::log_info(&format!("port_removed: {port}"));
-            if port == 22 { return; }
             if let Err(e) = port_mgr.remove(port) {
                 crate::log_warn(&format!("hostfwd_remove({port}) failed: {e}"));
             }
         }
-        GuestEvent::Heartbeat { uptime_sec } => {
-            crate::log_info(&format!("guest heartbeat: uptime {uptime_sec}s"));
+        GuestEvent::Heartbeat { uptime_sec: _ } => {
+            // Silent. Heartbeat is structural — controller tracks "last seen"
+            // separately and only logs when guest goes silent for 30+s.
+            // (Earlier we logged every 10s — pure noise in the UI log panel.)
         }
         GuestEvent::Log { level, message } => {
             match level {
