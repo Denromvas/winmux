@@ -215,41 +215,58 @@ export default function App() {
     return () => { if (unsub) unsub(); };
   }, [activeTab]);
 
-  // Clipboard image paste → save → insert path
+  // Clipboard image paste → save into USERPROFILE\.winmux-clipboard (auto-mounted as /workspace) → inject guest path
+  // Two triggers:
+  //   - native "paste" event (when xterm hasn't captured the focus, e.g. clean prompt)
+  //   - Ctrl+Shift+V at window level (works even when terminal is in TUI mode like Claude Code)
   useEffect(() => {
+    const insertPath = async () => {
+      try {
+        const path = await invoke<string>("paste_image_to_guest");
+        if (activeTab !== null) {
+          const tab = tabs.find(t => t.id === activeTab);
+          const paneId = tab?.focusedPane ?? activeTab;
+          await invoke("send_input", { tabId: paneId, data: path + " " });
+        }
+      } catch (e) {
+        console.warn("paste_image_to_guest:", e);
+      }
+    };
     const onPaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith("image/")) {
+        if (items[i].type.startsWith("image/")) {
           e.preventDefault();
-          const blob = item.getAsFile();
-          if (blob) {
-            const ext = item.type.split("/")[1] || "png";
-            const buf = await blob.arrayBuffer();
-            const path = await invoke<string>("save_image_drop", {
-              bytes: Array.from(new Uint8Array(buf)), ext,
-            });
-            if (activeTab !== null) {
-              await invoke("send_input", { tabId: activeTab, data: path });
-            }
-          }
+          await insertPath();
           return;
         }
       }
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+V — works at window level so Claude TUI can't swallow it
+      if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
+        e.preventDefault();
+        e.stopPropagation();
+        insertPath();
+      }
+    };
     window.addEventListener("paste", onPaste as any);
-    return () => window.removeEventListener("paste", onPaste as any);
-  }, [activeTab]);
+    window.addEventListener("keydown", onKeyDown, true);  // capture phase = before xterm
+    return () => {
+      window.removeEventListener("paste", onPaste as any);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [activeTab, tabs]);
 
   const stateColor = { stopped: "#888", starting: "#ffd166", running: "#00ff88", error: "#ff6b6b" }[status.state];
 
   return (
     <div className="winmux-app">
       <div className="titlebar" data-tauri-drag-region>
-        <span className="title">WinMux</span>
-        <span className="status" style={{ color: stateColor }}>
+        {/* Children also need drag-region in Tauri 2 — otherwise they swallow mousedown */}
+        <span className="title" data-tauri-drag-region>WinMux</span>
+        <span className="status" style={{ color: stateColor }} data-tauri-drag-region>
           ● {status.state.toUpperCase()}
           {status.uptime_sec ? ` · ${status.uptime_sec}s` : ""}
           {status.guest_kernel ? ` · ${status.guest_kernel}` : ""}

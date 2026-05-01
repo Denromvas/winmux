@@ -4,7 +4,7 @@
 ;-------------------------------------------------------------
 
 !ifndef VERSION
-  !define VERSION "0.1.10"
+  !define VERSION "0.1.11"
 !endif
 
 !ifndef BUILD_DIR

@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.10",
-    "released_at": "2026-04-30",
-    "notes": "v0.1.10 — User services autostart + bigger defaults:\n- ~/.winmux/services/*.sh launched by winmux-init on every boot, supervised with restart-on-crash (backoff 2-60s)\n- New helper: winmux-svc add/list/start/stop/status/log/remove — solves 'no systemd, how to autostart bots?' problem\n- Defaults bumped: 2G→4G RAM, 4→8 SMP. Edit winmux.toml if you want different\n- Existing winmux.toml files are NOT touched — only new installs/configs use new defaults",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-desktop-setup-v0.1.10.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-cli-setup-v0.1.10.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-desktop-portable-v0.1.10.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-cli-portable-v0.1.10.zip",
+    "latest": "0.1.11",
+    "released_at": "2026-05-01",
+    "notes": "v0.1.11 — Fixes for Claude TUI usability:\n- Window can now be dragged: data-tauri-drag-region added to all titlebar children (Tauri 2 quirk — children swallow mousedown without it)\n- Drag-and-drop file from Windows Explorer now converts path to /workspace/... (auto-mounted) — Claude can read the file directly. Files outside USERPROFILE auto-copied to .winmux-drops\n- Ctrl+Shift+V image paste now works inside Claude TUI: window-level keydown handler in capture phase, so xterm/Claude don't swallow it\n- Native paste event also routes to /workspace/.winmux-clipboard/ (was using inaccessible $INSTDIR/drops/ before)",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-desktop-setup-v0.1.11.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-cli-setup-v0.1.11.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-desktop-portable-v0.1.11.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-cli-portable-v0.1.11.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

@@ -96,32 +96,20 @@ mod ssh_setup {
     }
 }
 
-/// Detect Hyper-V root partition (full Hyper-V role enabled), distinct from
-/// HypervisorPlatform (WHPX user API). When the full role is on, the OS runs
-/// as a guest of its own hypervisor and user-mode WHPX VMs crash early.
+/// Detect Hyper-V root partition (full Hyper-V VMMS service running).
+/// We DO NOT use Win32_ComputerSystem.HypervisorPresent — that flag is also
+/// True when just HypervisorPlatform (WHPX, the user-mode API we want to use)
+/// is enabled, which would cause us to skip WHPX in the very case where it
+/// would have worked. Only vmms RUNNING means the OS owns the hypervisor as
+/// a root partition and user-mode WHPX VMs would die.
 fn has_full_hyperv() -> bool {
-    // Method 1 (cheap): registry — Hyper-V services exist when role is installed.
-    // BUT they exist on Win11 Pro by default even without the role. Check service state instead.
     let svc = Command::new("sc")
         .args(["query", "vmms"])  // Hyper-V VMM service
         .output();
     if let Ok(out) = svc {
         let s = String::from_utf8_lossy(&out.stdout);
-        if s.contains("RUNNING") {
-            return true;
-        }
-    }
-    // Method 2: hypervisor presence flag — set when Windows boots under a hypervisor
-    // (i.e. Hyper-V root or any other host). On a bare metal Win without Hyper-V it is 0.
-    let cpu = Command::new("powershell")
-        .args(["-NoProfile", "-Command",
-            "(Get-CimInstance Win32_ComputerSystem).HypervisorPresent"])
-        .output();
-    if let Ok(out) = cpu {
-        let s = String::from_utf8_lossy(&out.stdout).trim().to_lowercase();
-        if s == "true" {
-            return true;
-        }
+        // "RUNNING" is the value we care about. "STOPPED" or service-not-found = OK.
+        return s.contains("RUNNING");
     }
     false
 }

@@ -488,22 +488,44 @@ fn write_settings(cfg: SettingsConfig) -> Result<(), String> {
     Ok(())
 }
 
-/// Drag-and-drop helper: для кожного дропнутого Windows-шляху повертає
-/// "поліпшений" текст для вставки в термінал.
-/// Якщо файл уже на спільній ФС (через sshfs ~/win) — даємо guest-path.
-/// Інакше копіюємо у $HOME/.winmux-drops/ через scp і даємо guest-path до неї.
-/// (MVP: просто інвертуємо шлях C:\Users\... → /mnt/c/Users/... — гість сам зробить mkdir+copy
-///  через Windows OpenSSH назад. Поки тільки повертаємо текст для вставки.)
+/// Drop handler: convert dropped Windows file paths to guest-side paths
+/// that Claude Code can read. Two cases:
+/// 1) Path is under USERPROFILE → already auto-mounted at /workspace.
+///    Just rewrite C:\Users\<user>\foo → /workspace/foo
+/// 2) Path is anywhere else → copy file into %USERPROFILE%\.winmux-drops\
+///    and return /workspace/.winmux-drops/<basename>
 #[tauri::command]
 fn drop_paths(paths: Vec<String>) -> Result<String, String> {
-    // Простий формат: shell-escaped шляхи через пробіл, конвертовані до POSIX-стилю
-    // (це не sshfs-mount шлях, а просто візуально красиво — що користувач може потім використати).
-    let parts: Vec<String> = paths.iter().map(|p| {
-        let win = p.replace('\\', "/");
-        // Якщо містить пробіли — лапки
-        if win.contains(' ') { format!("'{win}'") } else { win }
-    }).collect();
-    Ok(parts.join(" "))
+    let userprofile = std::env::var("USERPROFILE").map_err(|_| "USERPROFILE not set".to_string())?;
+    let up_norm = userprofile.replace('\\', "/").to_lowercase();
+    let drops_dir = std::path::Path::new(&userprofile).join(".winmux-drops");
+    std::fs::create_dir_all(&drops_dir).ok();
+
+    let mut out: Vec<String> = Vec::new();
+    for p in paths {
+        let p_norm = p.replace('\\', "/");
+        let p_low = p_norm.to_lowercase();
+        let guest_path = if p_low.starts_with(&up_norm) {
+            // Inside USERPROFILE — strip prefix, remap to /workspace
+            let rel = &p_norm[up_norm.len()..];
+            format!("/workspace{rel}")
+        } else {
+            // Outside USERPROFILE — copy into .winmux-drops and remap
+            let basename = std::path::Path::new(&p)
+                .file_name().and_then(|n| n.to_str()).unwrap_or("dropped");
+            let dst = drops_dir.join(basename);
+            if let Err(e) = std::fs::copy(&p, &dst) {
+                return Err(format!("copy {p} -> {}: {e}", dst.display()));
+            }
+            format!("/workspace/.winmux-drops/{basename}")
+        };
+        if guest_path.contains(' ') {
+            out.push(format!("'{guest_path}'"));
+        } else {
+            out.push(guest_path);
+        }
+    }
+    Ok(out.join(" "))
 }
 
 /// Зберегти зображення (binary) у %LOCALAPPDATA%\WinMux\drops\img-TIMESTAMP.png
