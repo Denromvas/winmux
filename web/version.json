@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.9",
+    "latest": "0.1.10",
     "released_at": "2026-04-30",
-    "notes": "v0.1.9 — quieter Controller log:\n- Heartbeat lines no longer flood the log every 10s (silent unless guest goes away)\n- port_added/port_removed for system ports (22 sshd, 4445 winmux-agent) hidden too\n- Real events (other ports, errors, ready, mount status) still visible\n- Same code as 0.1.8 underneath",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.9/winmux-desktop-setup-v0.1.9.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.9/winmux-cli-setup-v0.1.9.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.9/winmux-desktop-portable-v0.1.9.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.9/winmux-cli-portable-v0.1.9.zip",
+    "notes": "v0.1.10 — User services autostart + bigger defaults:\n- ~/.winmux/services/*.sh launched by winmux-init on every boot, supervised with restart-on-crash (backoff 2-60s)\n- New helper: winmux-svc add/list/start/stop/status/log/remove — solves 'no systemd, how to autostart bots?' problem\n- Defaults bumped: 2G→4G RAM, 4→8 SMP. Edit winmux.toml if you want different\n- Existing winmux.toml files are NOT touched — only new installs/configs use new defaults",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-desktop-setup-v0.1.10.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-cli-setup-v0.1.10.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-desktop-portable-v0.1.10.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.10/winmux-cli-portable-v0.1.10.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

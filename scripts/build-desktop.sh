@@ -80,8 +80,8 @@ qemu_binary = "qemu/qemu-system-x86_64.exe"
 disk = "rootfs/user.qcow2"
 kernel = "rootfs/vmlinuz"
 kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10"
-ram = "2G"
-smp = 4
+ram = "4G"
+smp = 8
 accel = "auto"
 qmp_port = 4444
 agent_port = 4445

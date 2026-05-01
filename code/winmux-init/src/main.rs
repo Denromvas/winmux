@@ -132,6 +132,65 @@ fn fw_cfg_read_bytes(name: &str) -> Option<Vec<u8>> {
     fs::read(&path).ok()
 }
 
+/// Discover `~/.winmux/services/*.sh` and run each in a supervised loop.
+/// Logs go to `~/.winmux/services/<name>.log`. Restart with backoff (2→60s).
+/// This is the WinMux-equivalent of systemd unit auto-start.
+fn start_user_services() {
+    let dir = "/home/winmux/.winmux/services";
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => {
+            log(&format!("services: {dir} not found — skipping (mkdir + put .sh files there)"));
+            return;
+        }
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("sh") { continue; }
+        let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
+        let path_str = path.to_string_lossy().to_string();
+        // Make sure it's executable
+        let _ = Command::new("/bin/chmod").args(["+x", &path_str]).status();
+        log(&format!("services: launching '{name}' as supervised user service"));
+        std::thread::spawn(move || supervise_service(&name, &path_str));
+    }
+}
+
+fn supervise_service(name: &str, script: &str) {
+    let log_path = format!("/home/winmux/.winmux/services/{name}.log");
+    let mut backoff_sec = 2u64;
+    loop {
+        let log_file = std::fs::OpenOptions::new()
+            .create(true).append(true)
+            .open(&log_path)
+            .ok();
+        let mut cmd = Command::new("/bin/su");
+        cmd.args(["-l", "winmux", "-c", &format!("bash {script}")]);
+        if let Some(f) = log_file {
+            let f2 = f.try_clone().unwrap_or_else(|_| f.try_clone().unwrap());
+            cmd.stdout(Stdio::from(f));
+            cmd.stderr(Stdio::from(f2));
+        }
+        log(&format!("services: starting '{name}' (backoff={backoff_sec}s next on failure)"));
+        let status = cmd.status();
+        match status {
+            Ok(s) if s.success() => {
+                log(&format!("services: '{name}' exited 0 — not restarting"));
+                return;
+            }
+            Ok(s) => {
+                log(&format!("services: '{name}' exited code={} — restart in {backoff_sec}s",
+                    s.code().unwrap_or(-1)));
+            }
+            Err(e) => {
+                log(&format!("services: '{name}' spawn err: {e} — restart in {backoff_sec}s"));
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_secs(backoff_sec));
+        backoff_sec = (backoff_sec * 2).min(60);
+    }
+}
+
 fn auto_mount_workspace() {
     // Чекаємо що qemu_fw_cfg модуль завантажиться (kernel autoloads коли є devtree)
     let _ = Command::new("/sbin/modprobe").arg("qemu_fw_cfg").status();
@@ -197,6 +256,75 @@ cat <<'BANNER'
 BANNER
 "#);
     let _ = Command::new("/bin/chmod").args(["+x", "/etc/update-motd.d/99-winmux"]).status();
+
+    // Install winmux-svc helper script for managing user services
+    let _ = std::fs::create_dir_all("/home/winmux/.winmux/services");
+    let _ = std::fs::write("/usr/local/bin/winmux-svc", r#"#!/bin/bash
+# WinMux user services manager. Drops scripts into ~/.winmux/services/
+# auto-launched by /sbin/winmux-init on every boot with restart-on-crash.
+set -e
+DIR="$HOME/.winmux/services"
+mkdir -p "$DIR"
+case "${1:-help}" in
+  add)
+    [[ -z "$2" ]] && { echo "Usage: winmux-svc add <name> <command>" >&2; exit 1; }
+    name="$2"; shift 2
+    cat > "$DIR/$name.sh" <<EOF
+#!/bin/bash
+$*
+EOF
+    chmod +x "$DIR/$name.sh"
+    echo "Added: $DIR/$name.sh — starts on next VM boot, or run 'winmux-svc start $name' now."
+    ;;
+  list)
+    ls -1 "$DIR"/*.sh 2>/dev/null | xargs -r -n1 basename | sed 's/\.sh$//' || echo "(no services)"
+    ;;
+  remove|rm)
+    [[ -z "$2" ]] && { echo "Usage: winmux-svc remove <name>" >&2; exit 1; }
+    rm -f "$DIR/$2.sh" "$DIR/$2.log"
+    pkill -f "$DIR/$2.sh" 2>/dev/null || true
+    echo "Removed $2"
+    ;;
+  start)
+    [[ -z "$2" ]] && { echo "Usage: winmux-svc start <name>" >&2; exit 1; }
+    nohup bash "$DIR/$2.sh" > "$DIR/$2.log" 2>&1 &
+    echo "Started $2 (PID $!) — log: $DIR/$2.log"
+    ;;
+  stop)
+    [[ -z "$2" ]] && { echo "Usage: winmux-svc stop <name>" >&2; exit 1; }
+    pkill -f "$DIR/$2.sh" && echo "Stopped $2" || echo "$2 not running"
+    ;;
+  log|logs)
+    [[ -z "$2" ]] && { echo "Usage: winmux-svc log <name>" >&2; exit 1; }
+    tail -f "$DIR/$2.log"
+    ;;
+  status)
+    for f in "$DIR"/*.sh; do
+      [[ -f "$f" ]] || continue
+      name=$(basename "$f" .sh)
+      if pgrep -f "$f" >/dev/null; then echo "✓ $name (running)"; else echo "✗ $name (stopped)"; fi
+    done
+    ;;
+  *)
+    cat <<HELP
+winmux-svc — manage long-running user services (auto-start on boot)
+
+  winmux-svc add <name> <command>    create service
+  winmux-svc list                    list all services
+  winmux-svc start <name>            run now
+  winmux-svc stop <name>             kill
+  winmux-svc status                  who is running
+  winmux-svc log <name>              tail -f log
+  winmux-svc remove <name>           delete service
+
+Services live at ~/.winmux/services/<name>.sh and are launched by
+/sbin/winmux-init on every boot with auto-restart (backoff 2s→60s).
+HELP
+    ;;
+esac
+"#);
+    let _ = Command::new("/bin/chmod").args(["+x", "/usr/local/bin/winmux-svc"]).status();
+    let _ = Command::new("/bin/chown").args(["-R", "winmux:winmux", "/home/winmux/.winmux"]).status();
 
     // Mount: target=/workspace, source=user@10.0.2.2:profile_path
     let _ = fs::create_dir_all("/workspace");
@@ -337,6 +465,10 @@ fn main() {
     // Auto-mount Windows folder via SSH key from fw_cfg (background thread бо може блокувати)
     std::thread::spawn(move || {
         auto_mount_workspace();
+        // Once mount is done (or skipped), launch user services from ~/.winmux/services/
+        // Each .sh file becomes a supervised long-running process.
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        start_user_services();
     });
 
     spawn_login_on_console();

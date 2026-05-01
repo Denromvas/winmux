@@ -92,8 +92,8 @@ kernel = "rootfs/vmlinuz"
 kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10"
 
 # Ресурси VM
-ram = "2G"
-smp = 4
+ram = "4G"
+smp = 8
 
 # Acceleration: "auto" = WHPX якщо доступний, fallback TCG
 accel = "auto"
