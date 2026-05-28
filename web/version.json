@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.12",
+    "latest": "0.1.13",
     "released_at": "2026-05-28",
-    "notes": "v0.1.12 — Smaller image:\n- Rootfs trimmed ~54 MB (firmware, docs, man, locales, apt cache, logs, GCC LTO debug tools, node_modules docs/tests) + zerofree + recompress\n- frozen-v8.qcow2: 498 MB -> 444 MB\n- winmux-init refreshed (services autostart from v0.1.10 now baked into the base image)\n- No functional changes — node/claude/git/python/gcc toolchain all intact for npm native builds",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-desktop-setup-v0.1.12.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-cli-setup-v0.1.12.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-desktop-portable-v0.1.12.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-cli-portable-v0.1.12.zip",
+    "notes": "v0.1.13 — Fix: v0.1.12 kernel panic (corrupt init in image)\n- v0.1.12's frozen-v8 shipped a corrupted /sbin/winmux-init (bad copy into nbd-mounted fs) → 'Requested init failed (error -8)' kernel panic on boot\n- Re-copied the verified init binary, confirmed md5 matches in the final compressed image\n- Same small image (444 MB) and all v0.1.11 features\n- If you installed v0.1.12 and it won't boot, update to v0.1.13",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-desktop-setup-v0.1.13.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-cli-setup-v0.1.13.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-desktop-portable-v0.1.13.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-cli-portable-v0.1.13.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
