@@ -55,7 +55,8 @@ cp "$QEMU_SRC/COPYING.LIB" "$BUILD/qemu/" 2>/dev/null || true
 echo "==> [5/7] Copying rootfs..."
 mkdir -p "$BUILD/rootfs"
 # v3 = з вшитими Node 22 + Claude Code + git + tmux + sshfs + sshpass
-ROOTFS_FILE="$ROOTFS_SRC/frozen-v7.qcow2"
+ROOTFS_FILE="$ROOTFS_SRC/frozen-v8.qcow2"
+[[ -f "$ROOTFS_FILE" ]] || ROOTFS_FILE="$ROOTFS_SRC/frozen-v7.qcow2"
 [[ -f "$ROOTFS_FILE" ]] || ROOTFS_FILE="$ROOTFS_SRC/frozen-v6.qcow2"
 [[ -f "$ROOTFS_FILE" ]] || ROOTFS_FILE="$ROOTFS_SRC/frozen.qcow2"
 echo "  using $(basename "$ROOTFS_FILE") ($(du -h "$ROOTFS_FILE" | cut -f1))"

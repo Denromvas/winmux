@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.11",
-    "released_at": "2026-05-01",
-    "notes": "v0.1.11 — Fixes for Claude TUI usability:\n- Window can now be dragged: data-tauri-drag-region added to all titlebar children (Tauri 2 quirk — children swallow mousedown without it)\n- Drag-and-drop file from Windows Explorer now converts path to /workspace/... (auto-mounted) — Claude can read the file directly. Files outside USERPROFILE auto-copied to .winmux-drops\n- Ctrl+Shift+V image paste now works inside Claude TUI: window-level keydown handler in capture phase, so xterm/Claude don't swallow it\n- Native paste event also routes to /workspace/.winmux-clipboard/ (was using inaccessible $INSTDIR/drops/ before)",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-desktop-setup-v0.1.11.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-cli-setup-v0.1.11.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-desktop-portable-v0.1.11.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.11/winmux-cli-portable-v0.1.11.zip",
+    "latest": "0.1.12",
+    "released_at": "2026-05-28",
+    "notes": "v0.1.12 — Smaller image:\n- Rootfs trimmed ~54 MB (firmware, docs, man, locales, apt cache, logs, GCC LTO debug tools, node_modules docs/tests) + zerofree + recompress\n- frozen-v8.qcow2: 498 MB -> 444 MB\n- winmux-init refreshed (services autostart from v0.1.10 now baked into the base image)\n- No functional changes — node/claude/git/python/gcc toolchain all intact for npm native builds",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-desktop-setup-v0.1.12.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-cli-setup-v0.1.12.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-desktop-portable-v0.1.12.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.12/winmux-cli-portable-v0.1.12.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
