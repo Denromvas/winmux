@@ -43,12 +43,16 @@ where
     F: Fn(String) + Send + Sync + 'static,
 {
     let pty_system = native_pty_system();
-    // Велика стартова матриця: щоб TUI (Claude Code, btop) не малював у "вузькому" 100x30,
-    // поки фронтенд не пришле реальний resize_term із xterm.fit().
+    // Wide but SHORT initial matrix. Wide cols (200) so early wide output / TUI
+    // boxes don't wrap before the first resize_term. But rows MUST stay small (24):
+    // if initial rows > the real window height, bash prints the banner+prompt on a
+    // tall canvas, then xterm resizes down and shows the BOTTOM slice — leaving the
+    // prompt stuck at the bottom with empty space above. 24 keeps the prompt near
+    // the top; resize_term from xterm.fit() expands it within a frame.
     let pair = pty_system
         .openpty(PtySize {
-            rows: 80,
-            cols: 240,
+            rows: 24,
+            cols: 200,
             pixel_width: 0,
             pixel_height: 0,
         })

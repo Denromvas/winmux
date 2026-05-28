@@ -141,7 +141,7 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
 
   return (
     <div style={{ width: "100%", height: "100%", display: active ? "flex" : "none", flexDirection: "column", position: "relative" }}>
-      <div ref={ref} style={{ flex: 1, minHeight: 0, paddingBottom: 12 }} />
+      <div ref={ref} style={{ flex: 1, minHeight: 0 }} />
       {searchOpen && (
         <div style={{ position: "absolute", top: 4, right: 4, zIndex: 10,
           background: "#1a1b26", border: "1px solid #414868", borderRadius: 4,

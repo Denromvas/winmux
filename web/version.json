@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.14",
-    "released_at": "2026-05-28",
-    "notes": "v0.1.14 — Cosmetics:\n- Login banner no longer prints twice (merged duplicate profile.d scripts into one with a guard)\n- Terminal has bottom padding so the prompt isn't glued to the very edge of the window\n- Same 444 MB image, all features intact",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-desktop-setup-v0.1.14.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-cli-setup-v0.1.14.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-desktop-portable-v0.1.14.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-cli-portable-v0.1.14.zip",
+    "latest": "0.1.15",
+    "released_at": "2026-05-29",
+    "notes": "v0.1.15 — single greeting + prompt stays at top:\n- Removed duplicate welcome banner + leftover debug spam ('wait that's not right') from guest .bashrc — now the welcome shows once via /etc/update-motd.d/99-winmux at login\n- Fixed prompt stuck at the bottom of the window: initial PTY rows reduced 80 -> 24 (wide 200 cols kept). A tall initial canvas made bash print the prompt low, then xterm resized down and showed the empty bottom slice. Now the prompt sits near the top.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-desktop-setup-v0.1.15.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-cli-setup-v0.1.15.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-desktop-portable-v0.1.15.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-cli-portable-v0.1.15.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
