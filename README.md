@@ -1,129 +1,159 @@
 # WinMux
 
-> Портативне Linux-середовище для Windows у стилі Termux. Без WSL, Hyper-V, прав адміністратора.
-> Створене для повноцінної роботи AI-агентів (особливо `claude_code`) на Windows-десктопах і віддалених Windows Server через RDP.
+> **Run a full Linux environment — and AI coding agents like Claude Code — on Windows. No WSL. No Hyper-V. No admin rights. One `.exe`.**
 
 ![logo](assets/branding/winmux-v2.png)
 
-## Що це
+[![Latest release](https://img.shields.io/github/v/release/Denromvas/winmux?label=download&style=for-the-badge)](https://github.com/Denromvas/winmux/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-- Один портативний `.exe` (~510 МБ).
-- При запуску в фоні стартує мікро-Linux (Ubuntu 24.04 Minimal у QEMU user-mode).
-- Спільний `localhost`: будь-який порт, відкритий у Linux, автоматично доступний на Windows `127.0.0.1:N`.
-- Власний термінал на Tauri 2 + xterm.js: 6 тем, drag-and-drop, кастомний titlebar.
-- Передвстановлено в Linux: `node` v22, `npm`, `claude` CLI, `git`, `tmux`, `sshfs`, `sshpass`.
-- Без прав адміністратора — установка в `%LOCALAPPDATA%\WinMux\`.
+---
 
-## Дві edition
+## Why WinMux
 
-| | CLI | Desktop |
+You want to use Claude Code (or any Linux-native AI agent / dev tool) but you're on Windows. Your options today:
+
+- **WSL** — needs admin, Windows feature toggles, reboots, often blocked on corporate machines.
+- **A Mac** — buy a $1500 laptop just to run a CLI.
+- **A cloud VM** — monthly bill, latency, your files aren't local.
+
+**WinMux is a fourth option.** Download one portable `.exe`, double-click it, and ~10 seconds later you have a real Ubuntu shell with Claude Code pre-installed — running entirely on your Windows machine, with your Windows folders auto-mounted. No admin prompt. Nothing to configure.
+
+It works the same on a developer's Win11 laptop and on a locked-down Windows Server you reach over RDP.
+
+## Download
+
+**→ [Get the latest installer](https://github.com/Denromvas/winmux/releases/latest)**
+
+| Edition | Best for | Download |
 |---|---|---|
-| Розмір | 506 МБ | 508 МБ |
-| UI | через PowerShell | Tauri vікно з xterm.js |
-| Use case | DevOps, Windows Server, scripts | Розробники, AI-агенти, drag-and-drop |
-| Запуск | `winmux start` | подвійний клік на `winmux-desktop.exe` |
+| **Desktop** | Developers, AI agents, drag-and-drop | `winmux-desktop-setup-vX.Y.Z.exe` |
+| **CLI** | DevOps, Windows Server, scripting | `winmux-cli-setup-vX.Y.Z.exe` |
 
-## Швидкий старт
+Installs per-user into `%LOCALAPPDATA%\WinMux\` — **no administrator rights required**.
 
-1. Скачай `winmux-desktop-setup-v0.1.0.exe`
-2. Запусти (без admin, у %LOCALAPPDATA%\WinMux\)
-3. Натисни "Start VM" → за ~10 сек з'явиться bash у вікні
-4. Логін: `winmux / winmux`
+> ⚠️ The installer is currently unsigned (code signing in progress), so Windows SmartScreen may warn on first run. Click **More info → Run anyway**.
+
+## What you get
+
+- **One portable `.exe`** (~510 MB — includes QEMU + a full Ubuntu 24.04 image).
+- **Real Ubuntu shell** in ~10 seconds (custom Rust init, no systemd boot wait).
+- **Claude Code pre-installed** — plus `node` 22, `npm`, `git`, `tmux`, `python3`.
+- **Your Windows files auto-mounted** at `/workspace` (your user folder, over SSH, zero-config).
+- **Shared localhost** — any port you open in Linux (`3000`, `8080`, …) is instantly reachable at `127.0.0.1:N` on Windows.
+- **Modern terminal UI** (Tauri 2 + xterm.js): tabs, splits, 6 themes, command palette (`Ctrl+Shift+P`), scrollback search (`Ctrl+F`).
+- **Built for AI agents:**
+  - 📋 Paste a screenshot straight into Claude with `Ctrl+Shift+V` (even inside its TUI).
+  - 🖱 Drag a file from Explorer → its path becomes a guest path Claude can read.
+  - 🤖 Live AI activity sidebar (streams Claude's tool calls).
+  - 📸 VM snapshots — `savevm` before `claude --dangerously-skip-permissions`, roll back instantly if it breaks something.
+  - 🌐 Mini-browser tabs for your dev servers — click a forwarded port, it opens inside WinMux.
+- **Run services that survive reboots** — drop a script in `~/.winmux/services/` and it auto-starts on every boot (Telegram bots, schedulers, workers). No systemd needed.
+
+## Quick start
+
+1. Download and run `winmux-desktop-setup-vX.Y.Z.exe`.
+2. Launch **WinMux** — the VM starts automatically.
+3. A bash prompt appears. Your Windows user folder is at `/workspace`.
 
 ```bash
-# у guest Linux
-winmux-mount         # змонтуй Windows-папку → ~/win
-claude               # API key через export ANTHROPIC_API_KEY="sk-ant-..."
+# inside the Linux shell
+cd /workspace            # your Windows files are here
+export ANTHROPIC_API_KEY="sk-ant-..."   # or use a Claude subscription
+claude                   # start coding with AI
+
+# expose a dev server — reachable at http://127.0.0.1:3000 on Windows
+cd /workspace/my-app && npm run dev
 ```
 
-## Документація
+> Tip: right-click any folder in Windows Explorer → **Open in WinMux** to jump straight in. Add a `.winmux/config.toml` with an `init_command` for zero-touch project startup.
 
-- [Технічне завдання (повне)](docs/TZ.md) — 27 розділів, ~1300 рядків
-- [Findings PoC + Етап 1](research/poc-findings.md) — результати вимірів і експериментів
-- [Roadmap](#roadmap)
+## Performance
 
-## Архітектура
+WinMux auto-detects the fastest available accelerator:
+
+- **WHPX** (Windows Hypervisor Platform) — near-native speed. Used automatically when available.
+- **TCG** (software emulation) — universal fallback, slower but works everywhere.
+
+For best speed, ensure WHPX can run: disable the **full Hyper-V role** and **Memory Integrity / Core Isolation** (both reserve the hypervisor and force WinMux onto TCG). WSL2 and Docker Desktop keep working via HypervisorPlatform.
+
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │                     WINDOWS HOST                        │
-│  ┌──────────────────┐    ┌──────────────────────┐     │
-│  │  winmux-desktop  │◄──►│  winmux-controller   │     │
-│  │  (Tauri+xterm.js)│IPC │  (lifecycle, QMP)    │     │
-│  └──────────────────┘    └──────────┬───────────┘     │
-│                                      │ spawns          │
-│                            ┌─────────▼────────┐        │
-│                            │ qemu-system-x86_64│        │
-│                            └─────────┬────────┘        │
-└──────────────────────────────────────┼──────────────────┘
-                                       │ virtio-{net,serial}
-                          ┌────────────▼──────────────┐
+│  ┌──────────────────┐    ┌──────────────────────┐       │
+│  │  winmux-desktop  │◄──►│  winmux-controller   │       │
+│  │  (Tauri+xterm.js)│IPC │  (lifecycle, QMP)    │       │
+│  └──────────────────┘    └──────────┬───────────┘       │
+│                                      │ spawns            │
+│                            ┌─────────▼─────────┐         │
+│                            │ qemu-system-x86_64 │        │
+│                            └─────────┬─────────┘         │
+└──────────────────────────────────────┼─────────────────┘
+                                        │ virtio-{net,serial}
+                          ┌─────────────▼─────────────┐
                           │   Ubuntu 24.04 Minimal    │
-                          │   ┌─────────────────────┐ │
-                          │   │ winmux-init (PID 1) │ │
-                          │   │ ↓ winmux-agent      │ │
-                          │   │ ↓ sshd + bash + ... │ │
-                          │   └─────────────────────┘ │
+                          │   winmux-init (PID 1)     │
+                          │   ↓ sshd + agent + bash   │
+                          │   ↓ user services         │
                           └───────────────────────────┘
 ```
 
-## Стек
+## Tech stack
 
 | Component | Tech |
-|-----------|------|
+|---|---|
 | Hypervisor | QEMU 11.0 (user-mode, no admin) |
 | Guest OS | Ubuntu 24.04 Minimal |
 | Init | Custom `winmux-init` in Rust (replaces systemd, ~300 ms boot) |
-| Network | SLIRP NAT + agent-driven QMP `hostfwd_add` |
-| Desktop UI | Tauri 2 + React 18 + xterm.js + WebGL renderer |
-| Controller | Rust, no async, std::net + std::thread |
+| Network | SLIRP NAT + agent-driven QMP `hostfwd_add` (auto port forwarding) |
+| Shared FS | sshfs over the guest's SSH to Windows OpenSSH server |
+| Desktop UI | Tauri 2 + React 18 + xterm.js |
+| Controller | Rust (sync, `std::net` + `std::thread`) |
 | Cross-compile | mingw-w64 (Windows), musl (Linux guest) |
-| Installer | NSIS (per-user, no admin) |
+| Installer | NSIS (per-user, auto-installs WebView2 runtime if missing) |
 
-## Збірка з джерел
+## Build from source
 
 ```bash
-# Залежності (Linux):
+# Dependencies (Linux build host):
 sudo apt install -y mingw-w64 musl-tools nsis nodejs npm
 
 # Rust + targets:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 rustup target add x86_64-pc-windows-gnu x86_64-unknown-linux-musl
-
-# Tauri CLI:
 npm install -g @tauri-apps/cli@^2
 
-# Build:
+# Build both editions:
 cd code/winmux-desktop/ui && npm install && cd -
-bash scripts/build-desktop.sh
-bash scripts/build-cli.sh
-# → dist/winmux-desktop-setup-v0.1.0.exe
-# → dist/winmux-cli-setup-v0.1.0.exe
+VERSION=0.1.11 bash scripts/build-desktop.sh   # → dist/winmux-desktop-setup-v0.1.11.exe
+VERSION=0.1.11 bash scripts/build-cli.sh       # → dist/winmux-cli-setup-v0.1.11.exe
 ```
 
 ## Roadmap
 
-### v0.1.0 (alpha) — DONE ✅
-- Core engine, PTY terminal, drag-and-drop, themes, NSIS installers, frozen-v5 з Claude Code
+**Shipped (v0.1.x alpha):**
+- ✅ Core engine, zero-config auto-mount, passwordless SSH
+- ✅ Desktop UI: tabs, splits, themes, command palette, mini-browser
+- ✅ Snapshots, scrollback search, clipboard-image & file drop for AI
+- ✅ AI activity sidebar, per-project config, user-service autostart
+- ✅ WHPX/TCG auto-detect, built-in updater, opt-out telemetry
 
-### v0.2.0 (beta) — IN PROGRESS
-- Auto-mount Windows folders via SSH key (zero-config)
-- Multi-tab + splits у Tauri
-- Settings UI (без editing TOML вручну)
-- System tray integration
-- Auto-update via Tauri updater
-- Documentation site
+**Toward v1.0 (public):**
+- 🔲 Code signing (SignPath.io for OSS) — remove SmartScreen warning
+- 🔲 Smaller image (compress rootfs)
+- 🔲 macOS / Linux host editions (same guest, native controller)
+- 🔲 Public beta program
 
-### v1.0 (public)
-- Code signing (SignPath.io for OSS)
-- Telemetry (opt-out, self-hosted)
-- Бета-програма (5-10 тестерів)
-- Landing page
+## License
 
-## Ліцензія
+MIT — see [LICENSE](LICENSE). Bundled QEMU is under GPLv2 (see `qemu/COPYING`).
 
-MIT — див. [LICENSE](LICENSE). Bundled QEMU під GPLv2 (qemu/COPYING).
-
-## Автор
+## Author
 
 Denis Romanyuk · claudetaistra@gmail.com
+
+---
+
+*WinMux exists so anyone can use Linux-native AI tooling on the computer they already own — no second machine, no cloud bill, no admin fight.*
