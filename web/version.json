@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.13",
+    "latest": "0.1.14",
     "released_at": "2026-05-28",
-    "notes": "v0.1.13 — Fix: v0.1.12 kernel panic (corrupt init in image)\n- v0.1.12's frozen-v8 shipped a corrupted /sbin/winmux-init (bad copy into nbd-mounted fs) → 'Requested init failed (error -8)' kernel panic on boot\n- Re-copied the verified init binary, confirmed md5 matches in the final compressed image\n- Same small image (444 MB) and all v0.1.11 features\n- If you installed v0.1.12 and it won't boot, update to v0.1.13",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-desktop-setup-v0.1.13.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-cli-setup-v0.1.13.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-desktop-portable-v0.1.13.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.13/winmux-cli-portable-v0.1.13.zip",
+    "notes": "v0.1.14 — Cosmetics:\n- Login banner no longer prints twice (merged duplicate profile.d scripts into one with a guard)\n- Terminal has bottom padding so the prompt isn't glued to the very edge of the window\n- Same 444 MB image, all features intact",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-desktop-setup-v0.1.14.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-cli-setup-v0.1.14.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-desktop-portable-v0.1.14.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.14/winmux-cli-portable-v0.1.14.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
