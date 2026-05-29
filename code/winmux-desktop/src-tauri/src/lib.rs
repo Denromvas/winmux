@@ -622,6 +622,26 @@ fn snapshot_list() -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // MUST be the first plugin: a 2nd launch (e.g. clicking the taskbar icon
+        // while the window is hidden to tray) forwards here and focuses the live
+        // window instead of spawning a new process. Without this the 2nd instance
+        // would run force_cleanup_processes() on startup and kill the running VM,
+        // losing the session.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+            // If the 2nd launch carried a folder path ("Open in WinMux"), hand it
+            // to the frontend instead of discarding it.
+            if let Some(path) = argv.get(1) {
+                if let Some(s) = app.try_state::<AppState>() {
+                    *s.opened_path.lock().unwrap() = Some(path.clone());
+                }
+                let _ = app.emit("opened-path", path.clone());
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

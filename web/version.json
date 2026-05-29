@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.17",
+    "latest": "0.1.18",
     "released_at": "2026-05-29",
-    "notes": "v0.1.17 — fix 'Bottom space' slider (was a no-op in v0.1.16):\n- The bottom space is now a real spacer element below the terminal, so the fit recomputes fewer rows and the prompt actually floats above the window's bottom edge. In v0.1.16 the padding approach was ignored by the terminal fit, so the slider had no visible effect.\n- Slider lives in the sidebar View section (0–400px, default 80); set 0 for edge-to-edge.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-desktop-setup-v0.1.17.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-cli-setup-v0.1.17.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-desktop-portable-v0.1.17.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-cli-portable-v0.1.17.zip",
+    "notes": "v0.1.18 — fix lost session when re-opening from taskbar:\n- Added single-instance guard. Previously, clicking the taskbar icon while the window was hidden to tray launched a SECOND winmux process, whose startup cleanup killed the running QEMU VM — so your session was lost and a fresh VM booted ('hangs and restarts'). Now a second launch just focuses the existing window; the VM and all terminals stay intact.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-desktop-setup-v0.1.18.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-cli-setup-v0.1.18.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-desktop-portable-v0.1.18.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-cli-portable-v0.1.18.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
