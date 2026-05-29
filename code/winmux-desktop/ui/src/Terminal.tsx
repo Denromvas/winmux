@@ -14,9 +14,10 @@ export interface TerminalProps {
   active: boolean;
   fontSize: number;
   theme: any;
+  bottomPad: number;
 }
 
-export default function Terminal({ tabId, active, fontSize, theme }: TerminalProps) {
+export default function Terminal({ tabId, active, fontSize, theme, bottomPad }: TerminalProps) {
   const ref = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -133,6 +134,21 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
     }
   }, [active]);
 
+  // Reserve empty space below the prompt: padding on the host element makes
+  // FitAddon compute fewer rows, so the cursor floats above the window edge.
+  useEffect(() => {
+    const fit = fitRef.current;
+    const term = termRef.current;
+    if (!fit || !term) return;
+    requestAnimationFrame(() => {
+      try {
+        fit.fit();
+        invoke("resize_term", { tabId, cols: term.cols, rows: term.rows }).catch(() => {});
+        term.scrollToBottom();
+      } catch {}
+    });
+  }, [bottomPad, tabId]);
+
   const opts = { regex: false, wholeWord: false, caseSensitive: false,
     decorations: { matchBackground: "#ffd166", activeMatchBackground: "#ff6b6b",
       matchOverviewRuler: "#ffd166", activeMatchColorOverviewRuler: "#ff6b6b" } };
@@ -141,7 +157,7 @@ export default function Terminal({ tabId, active, fontSize, theme }: TerminalPro
 
   return (
     <div style={{ width: "100%", height: "100%", display: active ? "flex" : "none", flexDirection: "column", position: "relative" }}>
-      <div ref={ref} style={{ flex: 1, minHeight: 0 }} />
+      <div ref={ref} style={{ flex: 1, minHeight: 0, paddingBottom: bottomPad, boxSizing: "border-box" }} />
       {searchOpen && (
         <div style={{ position: "absolute", top: 4, right: 4, zIndex: 10,
           background: "#1a1b26", border: "1px solid #414868", borderRadius: 4,

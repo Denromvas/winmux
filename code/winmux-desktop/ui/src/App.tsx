@@ -44,6 +44,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<number | null>(null);
   const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem("winmux.fontSize") || "14", 10));
   const [themeName, setThemeName] = useState<string>(() => localStorage.getItem("winmux.theme") || "winmux-dark");
+  const [bottomPad, setBottomPad] = useState<number>(() => parseInt(localStorage.getItem("winmux.bottomPad") || "80", 10));
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [telemetryAsk, setTelemetryAsk] = useState(false);
@@ -73,6 +74,7 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem("winmux.fontSize", String(fontSize)); }, [fontSize]);
   useEffect(() => { localStorage.setItem("winmux.theme", themeName); }, [themeName]);
+  useEffect(() => { localStorage.setItem("winmux.bottomPad", String(bottomPad)); }, [bottomPad]);
 
   useEffect(() => {
     invoke<{asked:boolean,enabled:boolean}>("telemetry_status").then(s => {
@@ -349,6 +351,16 @@ export default function App() {
               <option value="catppuccin-mocha">Catppuccin Mocha</option>
               <option value="github-dark">GitHub Dark</option>
             </select>
+            <label style={{ display: "block", marginTop: 10, fontSize: 11, color: "#4a5680", textTransform: "uppercase", letterSpacing: 1 }}>
+              Bottom space — {bottomPad}px
+            </label>
+            <input
+              type="range" min={0} max={400} step={8}
+              value={bottomPad}
+              onChange={(e) => setBottomPad(parseInt(e.target.value, 10))}
+              style={{ width: "100%", marginTop: 4, accentColor: "#00ff88", cursor: "pointer" }}
+              title="Empty space below the prompt so it doesn't stick to the window edge"
+            />
           </section>
 
           <section>
@@ -461,6 +473,7 @@ export default function App() {
                       active={activeTab === tab.id && tab.focusedPane === paneId}
                       fontSize={fontSize}
                       theme={themes[themeName] || themes["winmux-dark"]}
+                      bottomPad={bottomPad}
                     />
                   </div>
                 ))}

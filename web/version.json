@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.15",
+    "latest": "0.1.16",
     "released_at": "2026-05-29",
-    "notes": "v0.1.15 — single greeting + prompt stays at top:\n- Removed duplicate welcome banner + leftover debug spam ('wait that's not right') from guest .bashrc — now the welcome shows once via /etc/update-motd.d/99-winmux at login\n- Fixed prompt stuck at the bottom of the window: initial PTY rows reduced 80 -> 24 (wide 200 cols kept). A tall initial canvas made bash print the prompt low, then xterm resized down and showed the empty bottom slice. Now the prompt sits near the top.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-desktop-setup-v0.1.15.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-cli-setup-v0.1.15.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-desktop-portable-v0.1.15.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.15/winmux-cli-portable-v0.1.15.zip",
+    "notes": "v0.1.16 — adjustable bottom space in terminal:\n- New 'Bottom space' slider in the sidebar View section (0–400px, default 80). Reserves empty space below the prompt so the active line no longer sticks to the very bottom edge of the window — easier on the eyes during long sessions.\n- Implemented via host-element padding so the terminal fit recomputes fewer rows; setting persists across restarts. Set it to 0 to restore the old edge-to-edge behaviour.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-desktop-setup-v0.1.16.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-cli-setup-v0.1.16.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-desktop-portable-v0.1.16.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-cli-portable-v0.1.16.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
