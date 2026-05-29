@@ -157,7 +157,10 @@ export default function Terminal({ tabId, active, fontSize, theme, bottomPad }: 
 
   return (
     <div style={{ width: "100%", height: "100%", display: active ? "flex" : "none", flexDirection: "column", position: "relative" }}>
-      <div ref={ref} style={{ flex: 1, minHeight: 0, paddingBottom: bottomPad, boxSizing: "border-box" }} />
+      <div ref={ref} style={{ flex: 1, minHeight: 0 }} />
+      {/* Spacer below the terminal: physically shrinks the fit area so FitAddon
+          computes fewer rows and the prompt floats above the window edge. */}
+      <div style={{ height: bottomPad, flexShrink: 0 }} />
       {searchOpen && (
         <div style={{ position: "absolute", top: 4, right: 4, zIndex: 10,
           background: "#1a1b26", border: "1px solid #414868", borderRadius: 4,

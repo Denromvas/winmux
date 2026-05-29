@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.16",
+    "latest": "0.1.17",
     "released_at": "2026-05-29",
-    "notes": "v0.1.16 — adjustable bottom space in terminal:\n- New 'Bottom space' slider in the sidebar View section (0–400px, default 80). Reserves empty space below the prompt so the active line no longer sticks to the very bottom edge of the window — easier on the eyes during long sessions.\n- Implemented via host-element padding so the terminal fit recomputes fewer rows; setting persists across restarts. Set it to 0 to restore the old edge-to-edge behaviour.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-desktop-setup-v0.1.16.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-cli-setup-v0.1.16.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-desktop-portable-v0.1.16.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.16/winmux-cli-portable-v0.1.16.zip",
+    "notes": "v0.1.17 — fix 'Bottom space' slider (was a no-op in v0.1.16):\n- The bottom space is now a real spacer element below the terminal, so the fit recomputes fewer rows and the prompt actually floats above the window's bottom edge. In v0.1.16 the padding approach was ignored by the terminal fit, so the slider had no visible effect.\n- Slider lives in the sidebar View section (0–400px, default 80); set 0 for edge-to-edge.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-desktop-setup-v0.1.17.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-cli-setup-v0.1.17.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-desktop-portable-v0.1.17.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.17/winmux-cli-portable-v0.1.17.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
