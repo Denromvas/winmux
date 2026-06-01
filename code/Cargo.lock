@@ -5574,6 +5574,7 @@ name = "winmux-agent"
 version = "0.1.19"
 dependencies = [
  "anyhow",
+ "libc",
  "serde",
  "serde_json",
  "winmux-shared",
@@ -5611,6 +5612,7 @@ dependencies = [
  "toml 0.8.2",
  "ureq",
  "uuid",
+ "winmux-shared",
 ]
 
 [[package]]

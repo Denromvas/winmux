@@ -241,6 +241,17 @@ impl Vm {
         // QMP
         cmd.arg("-qmp").arg(format!("tcp:127.0.0.1:{},server=on,wait=off", cfg.qmp_port));
 
+        // Low-latency terminal channel: a virtio-serial port backed by a host
+        // chardev socket. The desktop connects here and the guest agent runs a
+        // PTY shell per channel — no SSH crypto, no SLIRP TCP/IP stack.
+        // nodelay=on disables Nagle on the host loopback socket.
+        cmd.arg("-device").arg("virtio-serial-pci,id=wmvioser0");
+        cmd.arg("-chardev").arg(format!(
+            "socket,id=wmterm,host=127.0.0.1,port={},server=on,wait=off,nodelay=on",
+            cfg.term_port
+        ));
+        cmd.arg("-device").arg("virtserialport,chardev=wmterm,name=winmux.term");
+
         // --- Auto-mount Windows folders via SSH key ---
         // Generate (or reuse) SSH key, install public key into Windows OpenSSH authorized_keys,
         // then pass private key + Windows username + USERPROFILE path to guest via fw_cfg.

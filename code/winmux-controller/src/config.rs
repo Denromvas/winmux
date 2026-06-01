@@ -47,6 +47,11 @@ pub struct Config {
     #[serde(default = "default_ssh_port")]
     pub ssh_port: u16,
 
+    /// Terminal mux port — host chardev socket для virtio-serial каналу терміналу
+    /// (низьколатентний транспорт замість SSH+SLIRP)
+    #[serde(default = "default_term_port")]
+    pub term_port: u16,
+
     /// Шлях для serial console log
     #[serde(default = "default_serial_log")]
     pub serial_log: PathBuf,
@@ -68,6 +73,7 @@ fn default_accel() -> String { "auto".into() }
 fn default_qmp_port() -> u16 { 4444 }
 fn default_agent_port() -> u16 { 4445 }
 fn default_ssh_port() -> u16 { 2222 }
+fn default_term_port() -> u16 { 4446 }
 fn default_serial_log() -> PathBuf { PathBuf::from("boot.log") }
 fn default_true() -> bool { true }
 
