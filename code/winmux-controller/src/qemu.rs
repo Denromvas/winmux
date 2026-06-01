@@ -292,7 +292,14 @@ impl Vm {
             crate::log_warn("auto-mount: failed to setup SSH key — guest will require manual winmux-mount");
         }
 
-        // No display, serial → file
+        // No display, serial → file.
+        // Ensure the log dir exists FIRST: QEMU's `-serial file:logs/boot.log`
+        // exits immediately if the parent dir is missing (portable ZIPs ship
+        // without an empty logs/ folder) → VM never starts and the app "hangs".
+        let serial_abs = cfg.workdir.join(&cfg.serial_log);
+        if let Some(parent) = serial_abs.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         cmd.arg("-display").arg("none")
            .arg("-serial").arg(format!("file:{}", cfg.serial_log.display()));
 
