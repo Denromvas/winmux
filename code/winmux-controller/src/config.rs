@@ -65,7 +65,7 @@ fn default_workdir() -> PathBuf { PathBuf::from(".") }
 fn default_qemu_path() -> PathBuf { PathBuf::from("qemu/qemu-system-x86_64.exe") }
 fn default_disk() -> PathBuf { PathBuf::from("init-test.qcow2") }
 fn default_kernel_append() -> String {
-    "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10".into()
+    "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10 processor.max_cstate=1 intel_idle.max_cstate=0".into()
 }
 fn default_ram() -> String { "4G".into() }
 fn default_smp() -> u32 { 8 }
@@ -97,7 +97,7 @@ disk = "init-test.qcow2"
 
 # Direct kernel boot (опціонально). Якщо вказано — стартує kernel напряму без GRUB.
 kernel = "vmlinuz"
-kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10"
+kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10 processor.max_cstate=1 intel_idle.max_cstate=0"
 
 # Ресурси
 ram = "1G"

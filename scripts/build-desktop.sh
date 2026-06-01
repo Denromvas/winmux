@@ -82,7 +82,7 @@ cat > "$BUILD/winmux.toml" <<'EOF'
 qemu_binary = "qemu/qemu-system-x86_64.exe"
 disk = "rootfs/user.qcow2"
 kernel = "rootfs/vmlinuz"
-kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10"
+kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10 processor.max_cstate=1 intel_idle.max_cstate=0"
 ram = "4G"
 smp = 8
 accel = "auto"

@@ -220,10 +220,19 @@ impl Vm {
             cmd.arg("-cpu").arg("max");
         }
 
-        // Direct kernel boot
+        // Direct kernel boot.
+        // Force shallow idle (C1, no deep C-states). Under WHPX a halted vCPU
+        // is woken by the host scheduler with ~25 ms jitter; keeping idle shallow
+        // cuts terminal echo latency ~8x (≈25 ms → ≈3 ms) with no CPU spin.
+        // Appended here too (not just in winmux.toml) so existing installs that
+        // keep an old toml still get it on update.
         if let Some(kernel) = &cfg.kernel {
+            let mut append = cfg.kernel_append.clone();
+            if !append.contains("max_cstate") {
+                append.push_str(" processor.max_cstate=1 intel_idle.max_cstate=0");
+            }
             cmd.arg("-kernel").arg(kernel)
-               .arg("-append").arg(&cfg.kernel_append);
+               .arg("-append").arg(&append);
         }
 
         cmd.arg("-drive").arg(format!("file={},if=virtio,format=qcow2", cfg.disk.display()));

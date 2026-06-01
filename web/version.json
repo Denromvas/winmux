@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.20",
+    "latest": "0.1.21",
     "released_at": "2026-06-01",
-    "notes": "v0.1.20 — low-latency terminal (virtio-serial) + startup fix:\n- New terminal transport: a direct virtio-serial channel between the app and the guest (PTY shell per tab) instead of SSH-over-SLIRP — noticeably lower keystroke latency. Falls back to SSH automatically if unavailable. Validated on real hardware under WHPX.\n- Fixed a startup hang: QEMU exited immediately when the 'logs' folder was missing (portable ZIPs ship without it) — the controller now creates it before launch.\n- Includes the earlier MTTCG + fast-SSH latency wins.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-desktop-setup-v0.1.20.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-cli-setup-v0.1.20.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-desktop-portable-v0.1.20.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-cli-portable-v0.1.20.zip",
+    "notes": "v0.1.21 — terminal latency ~8x lower:\n- Force shallow guest idle (processor.max_cstate=1 / intel_idle.max_cstate=0). Under WHPX a halted vCPU was woken with ~25ms jitter; keeping idle shallow drops terminal echo latency from ~25ms avg to ~3ms — with NO extra CPU usage (cores still halt, just not deep). Measured on real hardware.\n- Applied automatically even if you keep an existing winmux.toml.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-desktop-setup-v0.1.21.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-cli-setup-v0.1.21.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-desktop-portable-v0.1.21.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-cli-portable-v0.1.21.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }
