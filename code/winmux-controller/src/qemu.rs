@@ -308,8 +308,28 @@ impl Vm {
         cmd.stdout(Stdio::null())
            .stderr(Stdio::piped());
 
-        let child = cmd.spawn()
+        let mut child = cmd.spawn()
             .with_context(|| format!("spawn {}", qemu.display()))?;
+
+        // Drain QEMU's stderr. CRITICAL: a piped stderr that nobody reads fills
+        // the OS pipe buffer and then QEMU BLOCKS on write → the whole VM hangs.
+        // Forward each line to our stdout (the desktop shows it in the controller
+        // log) and append to workdir/qemu.log for post-mortem.
+        if let Some(stderr) = child.stderr.take() {
+            let qemu_log = cfg.workdir.join("qemu.log");
+            std::thread::spawn(move || {
+                use std::io::{BufRead, BufReader, Write};
+                let mut file = std::fs::OpenOptions::new()
+                    .create(true).append(true).open(&qemu_log).ok();
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().map_while(|l| l.ok()) {
+                    println!("[qemu] {line}");
+                    if let Some(f) = file.as_mut() {
+                        let _ = writeln!(f, "{line}");
+                    }
+                }
+            });
+        }
 
         // Якщо ми пробували WHPX — слідкуємо протягом 5с; якщо помер — позначаємо як failed.
         if accel.starts_with("whpx") {
