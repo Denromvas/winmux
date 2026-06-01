@@ -70,6 +70,13 @@ where
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=NUL",
         "-o", "BatchMode=no",
+        // Low-latency interactive tuning: no compression (saves CPU per
+        // keystroke), low-delay QoS, and a fast AES-NI AEAD cipher first
+        // (cheaper to encrypt each echo char than the chacha20 default,
+        // especially under TCG where every cycle is emulated).
+        "-o", "Compression=no",
+        "-o", "IPQoS=lowdelay",
+        "-c", "aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr",
         "-tt",
     ]);
     if let Some(kp) = &key_path {

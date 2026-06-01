@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.18",
+    "latest": "0.1.19",
     "released_at": "2026-05-29",
-    "notes": "v0.1.18 — fix lost session when re-opening from taskbar:\n- Added single-instance guard. Previously, clicking the taskbar icon while the window was hidden to tray launched a SECOND winmux process, whose startup cleanup killed the running QEMU VM — so your session was lost and a fresh VM booted ('hangs and restarts'). Now a second launch just focuses the existing window; the VM and all terminals stay intact.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-desktop-setup-v0.1.18.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-cli-setup-v0.1.18.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-desktop-portable-v0.1.18.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.18/winmux-cli-portable-v0.1.18.zip",
+    "notes": "v0.1.19 — latency quick wins (MTTCG + low-latency SSH):\n- MTTCG: under TCG (no hardware accel) the 8 vCPUs now run in parallel threads (thread=multi) + bigger translation cache (tb-size=256) instead of single-threaded — noticeably snappier typing if you're on TCG.\n- Terminal SSH now uses no compression, low-delay QoS and a fast AES-NI cipher first — cheaper per-keystroke echo.\n- Groundwork only; the deep transport rebuild (virtio-serial, bypassing SSH+SLIRP) is still coming.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-desktop-setup-v0.1.19.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-cli-setup-v0.1.19.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-desktop-portable-v0.1.19.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-cli-portable-v0.1.19.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

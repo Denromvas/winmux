@@ -192,13 +192,24 @@ impl Vm {
             }
             other => other.to_string(),
         };
+        // MTTCG: коли йдемо в TCG, дозволяємо vCPU крутитися в кількох потоках
+        // (інакше SMP TCG однопотоковий → відчутна затримка) + більший TB-кеш,
+        // менше ретрансляцій. Для гостя прозоро. WHPX цих опцій не приймає.
+        let tune_tcg = |a: &str| -> String {
+            if a.starts_with("tcg") && !a.contains("thread=") {
+                format!("{a},thread=multi,tb-size=256")
+            } else {
+                a.to_string()
+            }
+        };
+        let accel = tune_tcg(&accel);
         // Tag для запису після успіху/невдачі
         let _ = std::fs::write(&last_accel_path, "whpx-trying");
 
         let mut cmd = Command::new(&qemu);
         cmd.current_dir(&cfg.workdir)
             .arg("-accel").arg(&accel)
-            .arg("-accel").arg("tcg")  // fallback
+            .arg("-accel").arg("tcg,thread=multi,tb-size=256")  // fallback (MTTCG)
             .arg("-m").arg(&cfg.ram)
             .arg("-smp").arg(cfg.smp.to_string());
 
