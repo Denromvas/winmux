@@ -15,6 +15,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 use winmux_shared::{GuestEvent, LogLevel, PortProto, PROTOCOL_VERSION};
 
+mod term_mux;
+
 const DEFAULT_HOST: &str = "10.0.2.2";
 const DEFAULT_PORT: u16 = 4445;
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -29,6 +31,9 @@ fn main() -> Result<()> {
     let addr = format!("{host}:{port}");
 
     eprintln!("[winmux-agent] connecting to {addr}");
+
+    // Low-latency terminal channel over virtio-serial (parallel to port-watch).
+    thread::spawn(term_mux::run);
 
     loop {
         match run_session(&addr) {

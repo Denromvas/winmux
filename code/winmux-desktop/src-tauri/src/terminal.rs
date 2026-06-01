@@ -6,13 +6,14 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-pub struct TerminalHandle {
+/// SSH-over-SLIRP backend (fallback transport).
+pub struct SshHandle {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pty_master: Box<dyn portable_pty::MasterPty + Send>,
     child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
-impl TerminalHandle {
+impl SshHandle {
     pub fn write(&mut self, data: &str) -> Result<()> {
         let mut w = self.writer.lock().unwrap();
         w.write_all(data.as_bytes())?;
@@ -36,9 +37,51 @@ impl TerminalHandle {
     }
 }
 
+/// A terminal tab is either the fast virtio-serial mux channel or the SSH
+/// fallback. lib.rs picks the backend once per VM (see term_mux::probe).
+pub enum TerminalHandle {
+    Ssh(SshHandle),
+    Mux {
+        client: std::sync::Arc<crate::term_mux::MuxClient>,
+        channel: u32,
+    },
+}
+
+impl TerminalHandle {
+    pub fn write(&mut self, data: &str) -> Result<()> {
+        match self {
+            TerminalHandle::Ssh(h) => h.write(data),
+            TerminalHandle::Mux { client, channel } => {
+                client.write(*channel, data);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
+        match self {
+            TerminalHandle::Ssh(h) => h.resize(cols, rows),
+            TerminalHandle::Mux { client, channel } => {
+                client.resize(*channel, cols, rows);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn kill(&mut self) -> Result<()> {
+        match self {
+            TerminalHandle::Ssh(h) => h.kill(),
+            TerminalHandle::Mux { client, channel } => {
+                client.close_channel(*channel);
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Spawn ssh client connected to guest, pipe output via callback, return write-handle.
 /// `on_data` is invoked for each chunk read from PTY (UTF-8 best-effort).
-pub fn spawn_ssh<F>(host_port: u16, on_data: F) -> Result<TerminalHandle>
+pub fn spawn_ssh<F>(host_port: u16, on_data: F) -> Result<SshHandle>
 where
     F: Fn(String) + Send + Sync + 'static,
 {
@@ -114,7 +157,7 @@ where
         }
     });
 
-    Ok(TerminalHandle {
+    Ok(SshHandle {
         writer,
         pty_master: pair.master,
         child,

@@ -10,6 +10,7 @@
 
 mod controller;
 mod terminal;
+mod term_mux;
 mod telemetry;
 
 use serde::{Deserialize, Serialize};
@@ -27,6 +28,11 @@ pub struct AppState {
     pub status: Mutex<VmStatus>,
     pub opened_path: Mutex<Option<String>>,
     pub next_tab_id: Mutex<u32>,
+    /// Shared virtio-serial terminal mux client. `Some` once the guest daemon
+    /// answered the probe; `None` → fall back to SSH per tab.
+    pub term_mux: Mutex<Option<Arc<term_mux::MuxClient>>>,
+    /// Whether we've already probed the mux (avoid re-probing per tab).
+    pub mux_probed: std::sync::atomic::AtomicBool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -206,16 +212,53 @@ fn send_input(tab_id: u32, data: String, state: State<'_, AppState>) -> Result<(
     Ok(())
 }
 
+/// virtio-serial chardev port (must match controller's default_term_port).
+const TERM_MUX_PORT: u16 = 4446;
+
 fn open_tab_internal(app: &tauri::AppHandle, state: &AppState) -> Result<u32, String> {
+    // First tab: probe the virtio-serial mux once. If the guest daemon answers,
+    // every tab uses the low-latency path; otherwise we stick to SSH.
+    if state.term_mux.lock().unwrap().is_none()
+        && !state.mux_probed.swap(true, std::sync::atomic::Ordering::SeqCst)
+    {
+        match term_mux::probe(TERM_MUX_PORT, std::time::Duration::from_secs(4)) {
+            Some(client) => {
+                *state.term_mux.lock().unwrap() = Some(client);
+                let _ = app.emit("controller-log",
+                    "[desktop] terminal: virtio-serial mux active (low-latency)".to_string());
+            }
+            None => {
+                let _ = app.emit("controller-log",
+                    "[desktop] terminal: mux probe failed → using SSH fallback".to_string());
+            }
+        }
+    }
+
     let id = {
         let mut g = state.next_tab_id.lock().unwrap();
         *g += 1;
         *g
     };
     let app_emit = app.clone();
-    let handle = terminal::spawn_ssh(2223, move |chunk| {
+    let on_data = move |chunk: String| {
         let _ = app_emit.emit(&format!("term-output:{id}"), chunk);
-    }).map_err(|e| e.to_string())?;
+    };
+
+    let mux = state.term_mux.lock().unwrap().clone();
+    let handle = if let Some(client) = mux {
+        let app_close = app.clone();
+        client.open_channel(id, 200, 24, on_data, move || {
+            let _ = app_close.emit(
+                &format!("term-output:{id}"),
+                "\r\n\x1b[33m[session ended]\x1b[0m\r\n".to_string(),
+            );
+        });
+        terminal::TerminalHandle::Mux { client, channel: id }
+    } else {
+        terminal::TerminalHandle::Ssh(
+            terminal::spawn_ssh(2223, on_data).map_err(|e| e.to_string())?,
+        )
+    };
     state.terminals.lock().unwrap().insert(id, handle);
     let _ = app.emit("tab-opened", id);
     Ok(id)

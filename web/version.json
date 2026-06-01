@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.19",
-    "released_at": "2026-05-29",
-    "notes": "v0.1.19 — latency quick wins (MTTCG + low-latency SSH):\n- MTTCG: under TCG (no hardware accel) the 8 vCPUs now run in parallel threads (thread=multi) + bigger translation cache (tb-size=256) instead of single-threaded — noticeably snappier typing if you're on TCG.\n- Terminal SSH now uses no compression, low-delay QoS and a fast AES-NI cipher first — cheaper per-keystroke echo.\n- Groundwork only; the deep transport rebuild (virtio-serial, bypassing SSH+SLIRP) is still coming.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-desktop-setup-v0.1.19.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-cli-setup-v0.1.19.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-desktop-portable-v0.1.19.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.19/winmux-cli-portable-v0.1.19.zip",
+    "latest": "0.1.20",
+    "released_at": "2026-06-01",
+    "notes": "v0.1.20 — low-latency terminal (virtio-serial) + startup fix:\n- New terminal transport: a direct virtio-serial channel between the app and the guest (PTY shell per tab) instead of SSH-over-SLIRP — noticeably lower keystroke latency. Falls back to SSH automatically if unavailable. Validated on real hardware under WHPX.\n- Fixed a startup hang: QEMU exited immediately when the 'logs' folder was missing (portable ZIPs ship without it) — the controller now creates it before launch.\n- Includes the earlier MTTCG + fast-SSH latency wins.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-desktop-setup-v0.1.20.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-cli-setup-v0.1.20.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-desktop-portable-v0.1.20.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.20/winmux-cli-portable-v0.1.20.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

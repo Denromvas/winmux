@@ -241,6 +241,17 @@ impl Vm {
         // QMP
         cmd.arg("-qmp").arg(format!("tcp:127.0.0.1:{},server=on,wait=off", cfg.qmp_port));
 
+        // Low-latency terminal channel: a virtio-serial port backed by a host
+        // chardev socket. The desktop connects here and the guest agent runs a
+        // PTY shell per channel — no SSH crypto, no SLIRP TCP/IP stack.
+        // nodelay=on disables Nagle on the host loopback socket.
+        cmd.arg("-device").arg("virtio-serial-pci,id=wmvioser0");
+        cmd.arg("-chardev").arg(format!(
+            "socket,id=wmterm,host=127.0.0.1,port={},server=on,wait=off,nodelay=on",
+            cfg.term_port
+        ));
+        cmd.arg("-device").arg("virtserialport,chardev=wmterm,name=winmux.term");
+
         // --- Auto-mount Windows folders via SSH key ---
         // Generate (or reuse) SSH key, install public key into Windows OpenSSH authorized_keys,
         // then pass private key + Windows username + USERPROFILE path to guest via fw_cfg.
@@ -281,7 +292,14 @@ impl Vm {
             crate::log_warn("auto-mount: failed to setup SSH key — guest will require manual winmux-mount");
         }
 
-        // No display, serial → file
+        // No display, serial → file.
+        // Ensure the log dir exists FIRST: QEMU's `-serial file:logs/boot.log`
+        // exits immediately if the parent dir is missing (portable ZIPs ship
+        // without an empty logs/ folder) → VM never starts and the app "hangs".
+        let serial_abs = cfg.workdir.join(&cfg.serial_log);
+        if let Some(parent) = serial_abs.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         cmd.arg("-display").arg("none")
            .arg("-serial").arg(format!("file:{}", cfg.serial_log.display()));
 
@@ -297,8 +315,28 @@ impl Vm {
         cmd.stdout(Stdio::null())
            .stderr(Stdio::piped());
 
-        let child = cmd.spawn()
+        let mut child = cmd.spawn()
             .with_context(|| format!("spawn {}", qemu.display()))?;
+
+        // Drain QEMU's stderr. CRITICAL: a piped stderr that nobody reads fills
+        // the OS pipe buffer and then QEMU BLOCKS on write → the whole VM hangs.
+        // Forward each line to our stdout (the desktop shows it in the controller
+        // log) and append to workdir/qemu.log for post-mortem.
+        if let Some(stderr) = child.stderr.take() {
+            let qemu_log = cfg.workdir.join("qemu.log");
+            std::thread::spawn(move || {
+                use std::io::{BufRead, BufReader, Write};
+                let mut file = std::fs::OpenOptions::new()
+                    .create(true).append(true).open(&qemu_log).ok();
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().map_while(|l| l.ok()) {
+                    println!("[qemu] {line}");
+                    if let Some(f) = file.as_mut() {
+                        let _ = writeln!(f, "{line}");
+                    }
+                }
+            });
+        }
 
         // Якщо ми пробували WHPX — слідкуємо протягом 5с; якщо помер — позначаємо як failed.
         if accel.starts_with("whpx") {
