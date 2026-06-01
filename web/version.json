@@ -1,11 +1,11 @@
 {
-    "latest": "0.1.21",
+    "latest": "0.1.22",
     "released_at": "2026-06-01",
-    "notes": "v0.1.21 — terminal latency ~8x lower:\n- Force shallow guest idle (processor.max_cstate=1 / intel_idle.max_cstate=0). Under WHPX a halted vCPU was woken with ~25ms jitter; keeping idle shallow drops terminal echo latency from ~25ms avg to ~3ms — with NO extra CPU usage (cores still halt, just not deep). Measured on real hardware.\n- Applied automatically even if you keep an existing winmux.toml.",
-    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-desktop-setup-v0.1.21.exe",
-    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-cli-setup-v0.1.21.exe",
-    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-desktop-portable-v0.1.21.zip",
-    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.21/winmux-cli-portable-v0.1.21.zip",
+    "notes": "v0.1.22 — auto-size to your PC + click-to-focus:\n- The VM now sizes itself to the host: RAM ~1/3 of physical (2-4GB) and vCPUs ~half the logical cores. On a 6GB / 4-core laptop that's 2GB / 4 vCPUs instead of 4GB / 8 — far lighter, leaves headroom for Windows, same low latency. Override anytime in winmux.toml (ram=\"2G\", smp=4).\n- Terminal latency is already near the WHPX floor (~3ms); this release is about footprint on weak machines.\n- Fix: clicking the empty area under the prompt now focuses the terminal and jumps to the bottom.",
+    "desktop_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.22/winmux-desktop-setup-v0.1.22.exe",
+    "cli_setup": "https://github.com/Denromvas/winmux/releases/download/v0.1.22/winmux-cli-setup-v0.1.22.exe",
+    "desktop_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.22/winmux-desktop-portable-v0.1.22.zip",
+    "cli_portable": "https://github.com/Denromvas/winmux/releases/download/v0.1.22/winmux-cli-portable-v0.1.22.zip",
     "min_supported": "0.0.1",
     "channel": "alpha"
 }

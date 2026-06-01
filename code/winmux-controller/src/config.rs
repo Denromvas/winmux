@@ -67,8 +67,8 @@ fn default_disk() -> PathBuf { PathBuf::from("init-test.qcow2") }
 fn default_kernel_append() -> String {
     "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10 processor.max_cstate=1 intel_idle.max_cstate=0".into()
 }
-fn default_ram() -> String { "4G".into() }
-fn default_smp() -> u32 { 8 }
+fn default_ram() -> String { "auto".into() }
+fn default_smp() -> u32 { 0 }
 fn default_accel() -> String { "auto".into() }
 fn default_qmp_port() -> u16 { 4444 }
 fn default_agent_port() -> u16 { 4445 }
@@ -101,7 +101,7 @@ kernel_append = "root=/dev/vda1 rw init=/sbin/winmux-init console=ttyS0 panic=10
 
 # Ресурси
 ram = "1G"
-smp = 8
+smp = 0        # 0 = auto (~half host cores); or set explicit
 
 # Accelerator: "whpx" / "tcg" / "auto" (auto = whpx якщо доступний, інакше tcg)
 accel = "auto"

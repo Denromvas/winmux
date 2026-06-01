@@ -114,6 +114,51 @@ fn has_full_hyperv() -> bool {
     false
 }
 
+/// Total physical RAM in MB (Windows via GlobalMemoryStatusEx; 0 if unknown).
+#[cfg(windows)]
+fn host_total_ram_mb() -> u64 {
+    #[repr(C)]
+    struct MemoryStatusEx {
+        dw_length: u32,
+        dw_memory_load: u32,
+        ull_total_phys: u64,
+        ull_avail_phys: u64,
+        ull_total_page_file: u64,
+        ull_avail_page_file: u64,
+        ull_total_virtual: u64,
+        ull_avail_virtual: u64,
+        ull_avail_extended_virtual: u64,
+    }
+    extern "system" {
+        fn GlobalMemoryStatusEx(buf: *mut MemoryStatusEx) -> i32;
+    }
+    let mut m: MemoryStatusEx = unsafe { std::mem::zeroed() };
+    m.dw_length = std::mem::size_of::<MemoryStatusEx>() as u32;
+    if unsafe { GlobalMemoryStatusEx(&mut m) } != 0 {
+        m.ull_total_phys / (1024 * 1024)
+    } else {
+        0
+    }
+}
+#[cfg(not(windows))]
+fn host_total_ram_mb() -> u64 { 0 }
+
+/// VM RAM ≈ 1/3 of host, clamped 2–4 GB (so a 6 GB laptop gives the VM 2 GB,
+/// not 4 GB which would force the host into swap).
+fn auto_ram() -> String {
+    let total = host_total_ram_mb();
+    if total == 0 { return "2G".into(); }
+    let mb = (total / 3).clamp(2048, 4096);
+    format!("{mb}M")
+}
+
+/// vCPUs ≈ half the logical CPUs (≈ physical cores), clamped 2–8 — leaves
+/// headroom for the host so the VM threads don't fight Windows for cores.
+fn auto_smp() -> u32 {
+    let logical = std::thread::available_parallelism().map(|n| n.get() as u32).unwrap_or(4);
+    (logical / 2).clamp(2, 8)
+}
+
 pub struct Vm {
     child: Child,
 }
@@ -206,12 +251,19 @@ impl Vm {
         // Tag для запису після успіху/невдачі
         let _ = std::fs::write(&last_accel_path, "whpx-trying");
 
+        // Auto-size to the host so weak laptops aren't starved (and big machines
+        // aren't capped). ram="auto"/smp=0 in winmux.toml → derive from host.
+        let ram = if cfg.ram.eq_ignore_ascii_case("auto") { auto_ram() } else { cfg.ram.clone() };
+        let smp = if cfg.smp == 0 { auto_smp() } else { cfg.smp };
+        crate::log_info(&format!("resources: ram={ram} smp={smp} (host {} MB, {} logical)",
+            host_total_ram_mb(), std::thread::available_parallelism().map(|n| n.get()).unwrap_or(0)));
+
         let mut cmd = Command::new(&qemu);
         cmd.current_dir(&cfg.workdir)
             .arg("-accel").arg(&accel)
             .arg("-accel").arg("tcg,thread=multi,tb-size=256")  // fallback (MTTCG)
-            .arg("-m").arg(&cfg.ram)
-            .arg("-smp").arg(cfg.smp.to_string());
+            .arg("-m").arg(&ram)
+            .arg("-smp").arg(smp.to_string());
 
         // CPU model: для TCG треба max (інакше SSE2-only, що ламає Node V8 native binaries
         // як claude-code, sharp тощо з SIGILL "Illegal instruction").
